@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log
+.env
+.env.local
+.git
+.gitignore
+README.md
+*.md
+.vscode
+.idea
+backend/data/*.db
+backend/data/*.db-journal
+backend/data/whatsapp-sessions
+.DS_Store
+coverage
+.nyc_output
+
