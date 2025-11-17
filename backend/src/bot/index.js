@@ -1,7 +1,7 @@
 import { Client, LocalAuth } from 'whatsapp-web.js';
 import qrcode from 'qrcode-terminal';
-import db from '../../database/index.js';
 import { Business } from '../../database/models/Business.js';
+import { MessageHandler } from './handlers/messageHandler.js';
 
 export class BookingBot {
   constructor(businessId, whatsappNumber) {
@@ -16,6 +16,7 @@ export class BookingBot {
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       },
     });
+    this.messageHandler = new MessageHandler(this, businessId);
   }
 
   async initialize() {
@@ -42,33 +43,11 @@ export class BookingBot {
     });
 
     this.client.on('message', async (msg) => {
-      await this.handleMessage(msg);
+      await this.messageHandler.handleMessage(msg);
     });
 
     await this.client.initialize();
-  }
-
-  async handleMessage(msg) {
-    try {
-      const from = msg.from;
-      const body = msg.body.toLowerCase().trim();
-
-      // Detectar negocio por número
-      const business = await Business.findByWhatsAppNumber(this.whatsappNumber);
-      if (!business) {
-        console.error(`Business not found for WhatsApp number: ${this.whatsappNumber}`);
-        return;
-      }
-
-      // Lógica básica de respuesta
-      if (body === 'hola' || body === 'hi' || body === 'hello') {
-        await msg.reply(`¡Hola! Bienvenido a ${business.name}. ¿En qué puedo ayudarte?`);
-      } else {
-        await msg.reply('Gracias por tu mensaje. Estamos trabajando en mejorar el bot.');
-      }
-    } catch (error) {
-      console.error('Error handling message:', error);
-    }
+    await this.messageHandler.initialize();
   }
 
   async sendMessage(to, message) {

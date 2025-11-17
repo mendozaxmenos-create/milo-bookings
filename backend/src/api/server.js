@@ -32,19 +32,14 @@ app.get('/health', (req, res) => {
 
 // API Routes
 import authRoutes from './routes/auth.js';
+import businessRoutes from './routes/businesses.js';
+import serviceRoutes from './routes/services.js';
+import bookingRoutes from './routes/bookings.js';
+
 app.use('/api/auth', authRoutes);
-
-app.use('/api/businesses', (req, res) => {
-  res.json({ message: 'Business routes - coming soon' });
-});
-
-app.use('/api/bookings', (req, res) => {
-  res.json({ message: 'Booking routes - coming soon' });
-});
-
-app.use('/api/services', (req, res) => {
-  res.json({ message: 'Service routes - coming soon' });
-});
+app.use('/api/businesses', businessRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/bookings', bookingRoutes);
 
 // Error handling
 app.use((err, req, res, next) => {
