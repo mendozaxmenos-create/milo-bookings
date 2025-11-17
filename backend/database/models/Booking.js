@@ -95,10 +95,16 @@ export class Booking {
 
   static async findByDateRange(businessId, startDate, endDate) {
     return db('bookings')
-      .where({ business_id: businessId })
-      .whereBetween('booking_date', [startDate, endDate])
-      .orderBy('booking_date', 'asc')
-      .orderBy('booking_time', 'asc');
+      .join('services', 'bookings.service_id', 'services.id')
+      .select(
+        'bookings.*',
+        'services.name as service_name',
+        'services.duration_minutes as service_duration'
+      )
+      .where({ 'bookings.business_id': businessId })
+      .whereBetween('bookings.booking_date', [startDate, endDate])
+      .orderBy('bookings.booking_date', 'asc')
+      .orderBy('bookings.booking_time', 'asc');
   }
 }
 

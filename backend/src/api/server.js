@@ -7,6 +7,8 @@ import authRoutes from './routes/auth.js';
 import businessRoutes from './routes/businesses.js';
 import serviceRoutes from './routes/services.js';
 import bookingRoutes from './routes/bookings.js';
+import settingsRoutes from './routes/settings.js';
+import availabilityRoutes from './routes/availability.js';
 
 dotenv.config();
 
@@ -40,6 +42,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/businesses', businessRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/availability', availabilityRoutes);
 
 // Error handling
 app.use((err, req, res, next) => {
