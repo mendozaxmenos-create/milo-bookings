@@ -1,17 +1,19 @@
 import express from 'express';
-import { BusinessUser } from '../../database/models/BusinessUser.js';
+import { BusinessUser } from '../../../database/models/BusinessUser.js';
 import { generateToken } from '../../utils/auth.js';
+import { validateLogin, validateRegister } from '../../utils/validators.js';
 
 const router = express.Router();
 
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { business_id, phone, password } = req.body;
-
-    if (!business_id || !phone || !password) {
-      return res.status(400).json({ error: 'business_id, phone, and password are required' });
+    const { error, value } = validateLogin(req.body);
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
     }
+
+    const { business_id, phone, password } = value;
 
     const user = await BusinessUser.findByBusinessAndPhone(business_id, phone);
     if (!user) {
@@ -48,11 +50,12 @@ router.post('/login', async (req, res) => {
 // Register (solo para desarrollo, en producción debería ser por invitación)
 router.post('/register', async (req, res) => {
   try {
-    const { business_id, phone, password, role } = req.body;
-
-    if (!business_id || !phone || !password) {
-      return res.status(400).json({ error: 'business_id, phone, and password are required' });
+    const { error, value } = validateRegister(req.body);
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
     }
+
+    const { business_id, phone, password, role } = value;
 
     // Verificar si el usuario ya existe
     const existing = await BusinessUser.findByBusinessAndPhone(business_id, phone);

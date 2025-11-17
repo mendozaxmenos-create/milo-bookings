@@ -53,5 +53,11 @@ export class Business {
       .offset(offset)
       .orderBy('created_at', 'desc');
   }
+
+  static async findAllActive() {
+    return db('businesses')
+      .where({ is_active: true })
+      .orderBy('created_at', 'desc');
+  }
 }
 
