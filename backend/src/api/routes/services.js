@@ -1,5 +1,5 @@
 import express from 'express';
-import { Service } from '../../database/models/Service.js';
+import { Service } from '../../../database/models/Service.js';
 import { authenticateToken } from '../../utils/auth.js';
 import { validateService } from '../../utils/validators.js';
 

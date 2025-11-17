@@ -1,5 +1,5 @@
 import express from 'express';
-import { Booking } from '../../database/models/Booking.js';
+import { Booking } from '../../../database/models/Booking.js';
 import { authenticateToken } from '../../utils/auth.js';
 import { validateBooking } from '../../utils/validators.js';
 

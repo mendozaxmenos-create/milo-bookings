@@ -1,6 +1,6 @@
 import { Client, LocalAuth } from 'whatsapp-web.js';
 import qrcode from 'qrcode-terminal';
-import { Business } from '../../database/models/Business.js';
+import { Business } from '../../../database/models/Business.js';
 import { MessageHandler } from './handlers/messageHandler.js';
 
 export class BookingBot {

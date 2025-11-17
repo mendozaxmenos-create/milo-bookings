@@ -1,5 +1,5 @@
 import express from 'express';
-import { BusinessUser } from '../../database/models/BusinessUser.js';
+import { BusinessUser } from '../../../database/models/BusinessUser.js';
 import { generateToken } from '../../utils/auth.js';
 import { validateLogin, validateRegister } from '../../utils/validators.js';
 

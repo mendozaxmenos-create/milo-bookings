@@ -1,5 +1,5 @@
 import express from 'express';
-import { Business } from '../../database/models/Business.js';
+import { Business } from '../../../database/models/Business.js';
 import { authenticateToken } from '../../utils/auth.js';
 import { validateBusiness } from '../../utils/validators.js';
 

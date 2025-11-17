@@ -3,6 +3,10 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import authRoutes from './routes/auth.js';
+import businessRoutes from './routes/businesses.js';
+import serviceRoutes from './routes/services.js';
+import bookingRoutes from './routes/bookings.js';
 
 dotenv.config();
 
@@ -31,10 +35,6 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
-import authRoutes from './routes/auth.js';
-import businessRoutes from './routes/businesses.js';
-import serviceRoutes from './routes/services.js';
-import bookingRoutes from './routes/bookings.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/businesses', businessRoutes);

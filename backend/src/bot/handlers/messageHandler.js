@@ -1,7 +1,7 @@
-import { Business } from '../../database/models/Business.js';
-import { BusinessSettings } from '../../database/models/BusinessSettings.js';
-import { Service } from '../../database/models/Service.js';
-import { Booking } from '../../database/models/Booking.js';
+import { Business } from '../../../database/models/Business.js';
+import { BusinessSettings } from '../../../database/models/BusinessSettings.js';
+import { Service } from '../../../database/models/Service.js';
+import { Booking } from '../../../database/models/Booking.js';
 
 export class MessageHandler {
   constructor(bot, businessId) {
