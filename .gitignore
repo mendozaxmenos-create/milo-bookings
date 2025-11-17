@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
-package-lock.json
+# Keep root package-lock.json for monorepo
+**/package-lock.json
+!package-lock.json
 yarn.lock
 
 # Environment
