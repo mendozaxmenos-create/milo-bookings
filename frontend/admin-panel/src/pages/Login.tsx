@@ -40,9 +40,13 @@ export function Login() {
       if (err?.response) {
         // Error de respuesta del servidor
         message = err.response.data?.error || err.response.data?.message || `Error ${err.response.status}: ${err.response.statusText}`;
-      } else if (err?.request) {
-        // Error de conexión (no se recibió respuesta)
-        message = 'No se pudo conectar con el servidor. Verifica que el backend esté funcionando.';
+      } else if (err?.request || err?.code === 'ECONNABORTED') {
+        // Error de conexión o timeout
+        if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
+          message = 'El servidor está tardando en responder. Esto puede suceder si el servicio está "dormido" (plan gratuito de Render). Por favor, espera unos segundos e intenta de nuevo.';
+        } else {
+          message = 'No se pudo conectar con el servidor. Verifica que el backend esté funcionando.';
+        }
         console.error('No response received:', err.request);
       } else {
         // Otro tipo de error
