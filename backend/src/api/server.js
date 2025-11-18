@@ -30,19 +30,12 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // límite de 100 requests por ventana
-});
-app.use('/api/', limiter);
-
-// Health check
+// Health check (sin rate limiting)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Root route - API information
+// Root route - API information (sin rate limiting)
 app.get('/', (req, res) => {
   res.json({
     name: 'Milo Bookings API',
@@ -65,9 +58,8 @@ app.get('/', (req, res) => {
   });
 });
 
-// TEMPORAL: Endpoint para ejecutar seeds manualmente (sin autenticación)
+// TEMPORAL: Endpoint para ejecutar seeds manualmente (sin autenticación ni rate limiting)
 // TODO: Eliminar este endpoint después de ejecutar los seeds
-// IMPORTANTE: Debe estar ANTES del logging middleware y de las rutas de API
 app.post('/api/run-seeds', async (req, res) => {
   try {
     console.log('[SeedEndpoint] ⚡ Ejecutando seeds manualmente...');
@@ -125,35 +117,19 @@ app.post('/api/run-seeds', async (req, res) => {
   }
 });
 
-// Root route - API information
-app.get('/', (req, res) => {
-  res.json({
-    name: 'Milo Bookings API',
-    version: '1.0.0',
-    status: 'running',
-    endpoints: {
-      health: '/health',
-      runSeeds: '/api/run-seeds (POST) - TEMPORAL',
-      auth: '/api/auth',
-      businesses: '/api/businesses',
-      services: '/api/services',
-      bookings: '/api/bookings',
-      settings: '/api/settings',
-      availability: '/api/availability',
-      payments: '/api/payments',
-      bot: '/api/bot',
-      admin: '/api/admin',
-    },
-    documentation: 'See README.md for API documentation',
-  });
-});
-
-// Rate limiting (después de las rutas especiales)
+// Rate limiting (después de las rutas especiales que no requieren rate limiting)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 100, // límite de 100 requests por ventana
 });
-app.use('/api/', limiter);
+// Aplicar rate limiting solo a rutas específicas, no a /api/run-seeds
+app.use((req, res, next) => {
+  // Excluir /api/run-seeds del rate limiting
+  if (req.path === '/api/run-seeds') {
+    return next();
+  }
+  return limiter(req, res, next);
+});
 
 // Logging middleware para todas las peticiones
 app.use((req, res, next) => {
@@ -175,15 +151,16 @@ app.use('/api/bot', botRoutes);
 // Las rutas de admin se registran DESPUÉS del endpoint de seeds
 app.use('/api/admin', adminRoutes);
 
-// Error handling
+// Error handling (debe estar después de todas las rutas)
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error('[Error Handler]', err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// 404 handler
+// 404 handler (debe estar al final, después de todas las rutas)
 app.use((req, res) => {
+  console.log(`[404] Route not found: ${req.method} ${req.path}`);
   res.status(404).json({ error: 'Route not found' });
 });
 
