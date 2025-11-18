@@ -39,6 +39,28 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Root route - API information
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Milo Bookings API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth',
+      businesses: '/api/businesses',
+      services: '/api/services',
+      bookings: '/api/bookings',
+      settings: '/api/settings',
+      availability: '/api/availability',
+      payments: '/api/payments',
+      bot: '/api/bot',
+      admin: '/api/admin',
+    },
+    documentation: 'See README.md for API documentation',
+  });
+});
+
 // Logging middleware para todas las peticiones
 app.use((req, res, next) => {
   console.log(`[API] ${req.method} ${req.path} - ${new Date().toISOString()}`);
