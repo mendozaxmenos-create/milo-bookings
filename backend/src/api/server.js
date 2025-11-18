@@ -42,12 +42,35 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Root route - API information
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Milo Bookings API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      runSeeds: '/api/run-seeds (POST) - TEMPORAL',
+      auth: '/api/auth',
+      businesses: '/api/businesses',
+      services: '/api/services',
+      bookings: '/api/bookings',
+      settings: '/api/settings',
+      availability: '/api/availability',
+      payments: '/api/payments',
+      bot: '/api/bot',
+      admin: '/api/admin',
+    },
+    documentation: 'See README.md for API documentation',
+  });
+});
+
 // TEMPORAL: Endpoint para ejecutar seeds manualmente (sin autenticación)
 // TODO: Eliminar este endpoint después de ejecutar los seeds
-// Usamos /api/run-seeds en lugar de /api/admin/run-seeds para evitar el middleware de autenticación
+// IMPORTANTE: Debe estar ANTES del logging middleware y de las rutas de API
 app.post('/api/run-seeds', async (req, res) => {
   try {
-    console.log('[SeedEndpoint] Ejecutando seeds manualmente...');
+    console.log('[SeedEndpoint] ⚡ Ejecutando seeds manualmente...');
     
     // Importar dinámicamente para evitar problemas de circular dependencies
     const knex = (await import('knex')).default;
@@ -56,6 +79,7 @@ app.post('/api/run-seeds', async (req, res) => {
     const { seed: seedSystemUsers } = await import('../database/seeds/003_system_users.js');
     
     const environment = process.env.NODE_ENV || 'production';
+    console.log('[SeedEndpoint] Environment:', environment);
     const db = knex(config[environment]);
     
     // Verificar si hay negocios
@@ -92,34 +116,13 @@ app.post('/api/run-seeds', async (req, res) => {
     });
   } catch (error) {
     console.error('[SeedEndpoint] ❌ Error:', error);
+    console.error('[SeedEndpoint] Stack:', error.stack);
     res.status(500).json({ 
       error: 'Error ejecutando seeds',
       message: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
-});
-
-// Root route - API information
-app.get('/', (req, res) => {
-  res.json({
-    name: 'Milo Bookings API',
-    version: '1.0.0',
-    status: 'running',
-    endpoints: {
-      health: '/health',
-      auth: '/api/auth',
-      businesses: '/api/businesses',
-      services: '/api/services',
-      bookings: '/api/bookings',
-      settings: '/api/settings',
-      availability: '/api/availability',
-      payments: '/api/payments',
-      bot: '/api/bot',
-      admin: '/api/admin',
-    },
-    documentation: 'See README.md for API documentation',
-  });
 });
 
 // Logging middleware para todas las peticiones
