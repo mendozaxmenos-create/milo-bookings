@@ -84,7 +84,7 @@ export function Settings() {
       setPaymentSource(paymentConfig.data.source);
       setPaymentForm((prev) => ({
         ...prev,
-        publicKey: paymentConfig.data.publicKey,
+        publicKey: paymentConfig.data?.publicKey || '',
       }));
     } else {
       setPaymentSource(null);

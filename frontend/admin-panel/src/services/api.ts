@@ -52,8 +52,11 @@ export interface LoginResponse {
   user: {
     id: string;
     business_id: string;
-    phone: string;
+    phone?: string;
+    email?: string;
+    name?: string;
     role: string;
+    is_system_user?: boolean;
   };
 }
 
