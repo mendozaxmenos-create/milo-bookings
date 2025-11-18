@@ -10,13 +10,12 @@ npm run db:migrate || {
   echo "⚠️  Advertencia: Error al ejecutar migraciones. Continuando..."
 }
 
-# Ejecutar seeds automáticamente si no hay datos (solo en producción)
-if [ "$NODE_ENV" = "production" ]; then
-  echo "🌱 Verificando si se necesitan datos iniciales..."
-  node scripts/check-and-seed.js || {
-    echo "⚠️  Advertencia: Error al verificar/ejecutar seeds. Continuando..."
-  }
-fi
+# EJECUTAR SEEDS SIEMPRE (solo si no hay datos)
+# Esto es más confiable que usar un endpoint HTTP
+echo "🌱 Verificando y ejecutando seeds si es necesario..."
+node scripts/check-and-seed.js || {
+  echo "⚠️  Advertencia: Error al ejecutar seeds. Continuando..."
+}
 
 # Volver al directorio raíz
 cd ..
