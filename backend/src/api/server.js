@@ -16,104 +16,90 @@ import adminRoutes from './routes/admin.js';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Configurar trust proxy para Render
 app.set('trust proxy', 1);
 
-// Middleware básico
-// Configurar helmet con opciones menos restrictivas para debugging
-app.use(helmet({
-  contentSecurityPolicy: false, // Deshabilitar temporalmente para debugging
-}));
+// CORS primero
 app.use(cors({
   origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
   credentials: true,
 }));
+
+// Body parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Logging middleware (temprano para ver todas las peticiones)
+// Helmet con configuración mínima
+app.use(helmet({
+  contentSecurityPolicy: false,
+}));
+
+// Logging middleware
 app.use((req, res, next) => {
   console.log(`[API] ${req.method} ${req.path} - ${new Date().toISOString()}`);
   next();
 });
 
+// RUTAS ESPECIALES PRIMERO (sin rate limiting)
+
 // Health check
 app.get('/health', (req, res) => {
+  console.log('[Health] GET /health');
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Root route
+// Root route - DEBE ESTAR ANTES DE CUALQUIER OTRA COSA
 app.get('/', (req, res) => {
-  console.log('[Root Route] GET / - Ejecutando handler');
-  try {
-    const response = {
-      name: 'Milo Bookings API',
-      version: '1.0.0',
-      status: 'running',
-      endpoints: {
-        health: '/health',
-        runSeeds: '/api/run-seeds (POST) - TEMPORAL',
-        auth: '/api/auth',
-        businesses: '/api/businesses',
-        services: '/api/services',
-        bookings: '/api/bookings',
-        settings: '/api/settings',
-        availability: '/api/availability',
-        payments: '/api/payments',
-        bot: '/api/bot',
-        admin: '/api/admin',
-      },
-    };
-    console.log('[Root Route] Enviando respuesta:', JSON.stringify(response));
-    res.json(response);
-  } catch (error) {
-    console.error('[Root Route] Error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+  console.log('[Root] GET / - Handler ejecutándose');
+  const response = {
+    name: 'Milo Bookings API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      runSeeds: '/api/run-seeds (POST) - TEMPORAL',
+      auth: '/api/auth',
+      businesses: '/api/businesses',
+      services: '/api/services',
+      bookings: '/api/bookings',
+      settings: '/api/settings',
+      availability: '/api/availability',
+      payments: '/api/payments',
+      bot: '/api/bot',
+      admin: '/api/admin',
+    },
+  };
+  console.log('[Root] Enviando respuesta');
+  res.json(response);
 });
 
-// TEMPORAL: Endpoint para ejecutar seeds (SIN rate limiting, SIN autenticación)
+// Endpoint para ejecutar seeds
 app.post('/api/run-seeds', async (req, res) => {
+  console.log('[SeedEndpoint] POST /api/run-seeds');
   try {
-    console.log('[SeedEndpoint] ⚡ Iniciando ejecución de seeds...');
-    
     const knex = (await import('knex')).default;
     const config = (await import('../knexfile.js')).default;
     const { seed: seedDemo } = await import('../database/seeds/001_demo_data.js');
     const { seed: seedSystemUsers } = await import('../database/seeds/003_system_users.js');
     
     const environment = process.env.NODE_ENV || 'production';
-    console.log('[SeedEndpoint] Environment:', environment);
-    
     const db = knex(config[environment]);
-    console.log('[SeedEndpoint] Conexión a DB establecida');
     
-    // Verificar si hay negocios
     const businessesCount = await db('businesses').count('* as count').first();
     const count = parseInt(businessesCount?.count || 0, 10);
-    console.log(`[SeedEndpoint] Negocios encontrados: ${count}`);
     
     if (count > 0) {
       await db.destroy();
       return res.json({ 
         message: 'Ya hay datos en la base de datos',
         businessesCount: count,
-        note: 'Los seeds no se ejecutaron porque ya existen negocios'
       });
     }
     
-    console.log('[SeedEndpoint] Ejecutando seed de datos demo...');
     await seedDemo(db);
-    console.log('[SeedEndpoint] ✅ Seed de datos demo completado');
-    
-    console.log('[SeedEndpoint] Ejecutando seed de usuarios del sistema...');
     await seedSystemUsers(db);
-    console.log('[SeedEndpoint] ✅ Seed de usuarios del sistema completado');
-    
     await db.destroy();
-    console.log('[SeedEndpoint] ✅ Todos los seeds ejecutados correctamente');
     
     res.json({ 
       message: 'Seeds ejecutados correctamente',
@@ -121,24 +107,21 @@ app.post('/api/run-seeds', async (req, res) => {
       note: 'Puedes intentar iniciar sesión ahora con las credenciales demo'
     });
   } catch (error) {
-    console.error('[SeedEndpoint] ❌ Error:', error);
-    console.error('[SeedEndpoint] Stack:', error.stack);
+    console.error('[SeedEndpoint] Error:', error);
     res.status(500).json({ 
       error: 'Error ejecutando seeds',
       message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
 
-// Rate limiting (solo para rutas de API, excluyendo /api/run-seeds)
+// Rate limiting para el resto de rutas API
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   skip: (req) => req.path === '/api/run-seeds',
 });
 
-// Aplicar rate limiting a rutas de API
 app.use('/api/', apiLimiter);
 
 // API Routes
@@ -154,15 +137,13 @@ app.use('/api/admin', adminRoutes);
 
 // Error handling
 app.use((err, req, res, next) => {
-  console.error('[Error Handler]', err.stack);
+  console.error('[Error Handler]', err);
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
 // 404 handler (al final)
 app.use((req, res) => {
-  console.log(`[404] Route not found: ${req.method} ${req.path}`);
-  console.log(`[404] Original URL: ${req.originalUrl}`);
-  console.log(`[404] Query:`, req.query);
+  console.log(`[404] ${req.method} ${req.path} - Route not found`);
   res.status(404).json({ error: 'Route not found' });
 });
 
