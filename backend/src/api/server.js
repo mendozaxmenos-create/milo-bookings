@@ -22,7 +22,10 @@ const PORT = process.env.PORT || 3000;
 app.set('trust proxy', 1);
 
 // Middleware básico
-app.use(helmet());
+// Configurar helmet con opciones menos restrictivas para debugging
+app.use(helmet({
+  contentSecurityPolicy: false, // Deshabilitar temporalmente para debugging
+}));
 app.use(cors({
   origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
   credentials: true,
@@ -43,24 +46,32 @@ app.get('/health', (req, res) => {
 
 // Root route
 app.get('/', (req, res) => {
-  res.json({
-    name: 'Milo Bookings API',
-    version: '1.0.0',
-    status: 'running',
-    endpoints: {
-      health: '/health',
-      runSeeds: '/api/run-seeds (POST) - TEMPORAL',
-      auth: '/api/auth',
-      businesses: '/api/businesses',
-      services: '/api/services',
-      bookings: '/api/bookings',
-      settings: '/api/settings',
-      availability: '/api/availability',
-      payments: '/api/payments',
-      bot: '/api/bot',
-      admin: '/api/admin',
-    },
-  });
+  console.log('[Root Route] GET / - Ejecutando handler');
+  try {
+    const response = {
+      name: 'Milo Bookings API',
+      version: '1.0.0',
+      status: 'running',
+      endpoints: {
+        health: '/health',
+        runSeeds: '/api/run-seeds (POST) - TEMPORAL',
+        auth: '/api/auth',
+        businesses: '/api/businesses',
+        services: '/api/services',
+        bookings: '/api/bookings',
+        settings: '/api/settings',
+        availability: '/api/availability',
+        payments: '/api/payments',
+        bot: '/api/bot',
+        admin: '/api/admin',
+      },
+    };
+    console.log('[Root Route] Enviando respuesta:', JSON.stringify(response));
+    res.json(response);
+  } catch (error) {
+    console.error('[Root Route] Error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // TEMPORAL: Endpoint para ejecutar seeds (SIN rate limiting, SIN autenticación)
@@ -150,6 +161,8 @@ app.use((err, req, res, next) => {
 // 404 handler (al final)
 app.use((req, res) => {
   console.log(`[404] Route not found: ${req.method} ${req.path}`);
+  console.log(`[404] Original URL: ${req.originalUrl}`);
+  console.log(`[404] Query:`, req.query);
   res.status(404).json({ error: 'Route not found' });
 });
 
