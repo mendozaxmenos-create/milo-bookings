@@ -5,12 +5,9 @@ interface AuthState {
   token: string | null;
   user: {
     id: string;
-    business_id: string | null;
-    phone?: string;
-    email?: string;
-    name?: string;
+    business_id: string;
+    phone: string;
     role: string;
-    is_system_user?: boolean;
   } | null;
   isAuthenticated: boolean;
   login: (token: string, user: AuthState['user']) => void;
