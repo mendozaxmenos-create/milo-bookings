@@ -99,12 +99,12 @@ export interface LoginResponse {
 }
 
 export const login = async (data: LoginRequest): Promise<LoginResponse> => {
-  const response = await api.post<LoginResponse>('/auth/login', data);
+  const response = await api.post<LoginResponse>('/api/auth/login', data);
   return response.data;
 };
 
 export const register = async (data: LoginRequest & { role?: string }): Promise<LoginResponse> => {
-  const response = await api.post<LoginResponse>('/auth/register', data);
+  const response = await api.post<LoginResponse>('/api/auth/register', data);
   return response.data;
 };
 
@@ -126,12 +126,12 @@ export interface UpdatePaymentConfigRequest {
 }
 
 export const getPaymentConfig = async (): Promise<PaymentConfigResponse> => {
-  const response = await api.get<PaymentConfigResponse>('/payments/config');
+  const response = await api.get<PaymentConfigResponse>('/api/payments/config');
   return response.data;
 };
 
 export const updatePaymentConfig = async (payload: UpdatePaymentConfigRequest): Promise<PaymentConfigResponse> => {
-  const response = await api.put<PaymentConfigResponse>('/payments/config', payload);
+  const response = await api.put<PaymentConfigResponse>('/api/payments/config', payload);
   return response.data;
 };
 
@@ -179,40 +179,40 @@ export interface CreateBusinessRequest {
 }
 
 export const getBusinesses = async (): Promise<BusinessListResponse> => {
-  const response = await api.get<BusinessListResponse>('/admin/businesses');
+  const response = await api.get<BusinessListResponse>('/api/admin/businesses');
   return response.data;
 };
 
 export const getBusiness = async (id: string): Promise<BusinessResponse> => {
-  const response = await api.get<BusinessResponse>(`/admin/businesses/${id}`);
+  const response = await api.get<BusinessResponse>(`/api/admin/businesses/${id}`);
   return response.data;
 };
 
 export const createBusiness = async (data: CreateBusinessRequest): Promise<BusinessResponse> => {
-  const response = await api.post<BusinessResponse>('/admin/businesses', data);
+  const response = await api.post<BusinessResponse>('/api/admin/businesses', data);
   return response.data;
 };
 
 export const updateBusiness = async (id: string, data: Partial<CreateBusinessRequest>): Promise<BusinessResponse> => {
-  const response = await api.put<BusinessResponse>(`/admin/businesses/${id}`, data);
+  const response = await api.put<BusinessResponse>(`/api/admin/businesses/${id}`, data);
   return response.data;
 };
 
 export const deleteBusiness = async (id: string): Promise<void> => {
-  await api.delete(`/admin/businesses/${id}`);
+  await api.delete(`/api/admin/businesses/${id}`);
 };
 
 export const activateBusiness = async (id: string): Promise<void> => {
-  await api.post(`/admin/businesses/${id}/activate`);
+  await api.post(`/api/admin/businesses/${id}/activate`);
 };
 
 export const getBusinessQR = async (id: string): Promise<{ data: { qr: string; status: string } }> => {
-  const response = await api.get<{ data: { qr: string; status: string } }>(`/admin/businesses/${id}/qr`);
+  const response = await api.get<{ data: { qr: string; status: string } }>(`/api/admin/businesses/${id}/qr`);
   return response.data;
 };
 
 export const reconnectBusinessBot = async (id: string): Promise<void> => {
-  await api.post(`/admin/businesses/${id}/reconnect-bot`);
+  await api.post(`/api/admin/businesses/${id}/reconnect-bot`);
 };
 
 // System Config API
@@ -223,12 +223,12 @@ export interface SubscriptionPriceResponse {
 }
 
 export const getSubscriptionPrice = async (): Promise<SubscriptionPriceResponse> => {
-  const response = await api.get<SubscriptionPriceResponse>('/admin/config/subscription-price');
+  const response = await api.get<SubscriptionPriceResponse>('/api/admin/config/subscription-price');
   return response.data;
 };
 
 export const updateSubscriptionPrice = async (price: string): Promise<SubscriptionPriceResponse> => {
-  const response = await api.put<SubscriptionPriceResponse>('/admin/config/subscription-price', { price });
+  const response = await api.put<SubscriptionPriceResponse>('/api/admin/config/subscription-price', { price });
   return response.data;
 };
 

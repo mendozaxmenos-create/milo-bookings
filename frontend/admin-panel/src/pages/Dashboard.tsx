@@ -25,7 +25,7 @@ export function Dashboard() {
     queryFn: async () => {
       console.log('[Dashboard] Fetching services...');
       try {
-        const response = await api.get('/services');
+        const response = await api.get('/api/services');
         console.log('[Dashboard] Services response:', {
           data: response.data,
           count: response.data?.data?.length || 0,
@@ -43,7 +43,7 @@ export function Dashboard() {
     queryFn: async () => {
       console.log('[Dashboard] Fetching bookings...');
       try {
-        const response = await api.get('/bookings');
+        const response = await api.get('/api/bookings');
         console.log('[Dashboard] Bookings response:', {
           data: response.data,
           count: response.data?.data?.length || 0,
