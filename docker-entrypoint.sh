@@ -10,32 +10,16 @@ npm run db:migrate || {
   echo "⚠️  Advertencia: Error al ejecutar migraciones. Continuando..."
 }
 
-# Ejecutar seeds solo si no hay datos (solo en producción la primera vez)
-if [ "$NODE_ENV" = "production" ]; then
-  echo "🌱 Verificando si se necesitan datos iniciales..."
-  # Verificar si hay negocios en la base de datos
-  # Si no hay, ejecutar seeds
-  node -e "
-    import('knex').then(async ({ default: knex }) => {
-      const config = (await import('./knexfile.js')).default;
-      const db = knex(config.production);
-      const count = await db('businesses').count('* as count').first();
-      if (parseInt(count.count) === 0) {
-        console.log('📊 No hay datos iniciales, ejecutando seeds...');
-        process.exit(1); // Indicar que se deben ejecutar seeds
-      } else {
-        console.log('✅ Ya hay datos en la base de datos, saltando seeds');
-        process.exit(0);
-      }
-    }).catch(() => process.exit(0));
-  " && {
-    echo "🌱 Ejecutando seeds de base de datos..."
-    npm run db:seed || {
-      echo "⚠️  Advertencia: Error al ejecutar seeds. Continuando..."
-    }
-  } || {
-    echo "✅ Datos iniciales ya existen, saltando seeds"
+# Ejecutar seeds (solo en producción, y solo si RUN_SEEDS está configurado)
+# Por defecto, los seeds se ejecutan manualmente desde Render Shell
+# Para ejecutar automáticamente, agrega RUN_SEEDS=true en las variables de entorno
+if [ "$NODE_ENV" = "production" ] && [ "$RUN_SEEDS" = "true" ]; then
+  echo "🌱 Ejecutando seeds de base de datos..."
+  npm run db:seed || {
+    echo "⚠️  Advertencia: Error al ejecutar seeds. Continuando..."
   }
+else
+  echo "ℹ️  Seeds no se ejecutarán automáticamente. Ejecuta 'npm run db:seed' manualmente si es necesario."
 fi
 
 # Volver al directorio raíz
