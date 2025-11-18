@@ -1,28 +1,73 @@
-import { Client, LocalAuth } from 'whatsapp-web.js';
+import pkg from 'whatsapp-web.js';
+const { Client, LocalAuth } = pkg;
 import qrcode from 'qrcode-terminal';
-import db from '../../database/index.js';
-import { Business } from '../../database/models/Business.js';
+import { MessageHandler } from './handlers/messageHandler.js';
+import { SessionStorage } from '../services/sessionStorage.js';
+import { saveQRCode } from '../services/qrStorage.js';
 
 export class BookingBot {
   constructor(businessId, whatsappNumber) {
     this.businessId = businessId;
     this.whatsappNumber = whatsappNumber;
+    this.sessionStorage = new SessionStorage(businessId);
+    
+    // Configuración de Puppeteer para entornos cloud
+    const puppeteerOptions = {
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--disable-extensions',
+      ],
+    };
+    
+    // Usar ejecutable de Chromium del sistema si está disponible (para Docker/cloud)
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      puppeteerOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    }
+
+    // Usar LocalAuth con path personalizado para sesiones persistentes
+    const authStrategy = new LocalAuth({
+      clientId: `business-${businessId}`,
+      dataPath: this.sessionStorage.getLocalAuthPath(),
+    });
+
     this.client = new Client({
-      authStrategy: new LocalAuth({
-        clientId: `business-${businessId}`,
-      }),
-      puppeteer: {
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      authStrategy,
+      puppeteer: puppeteerOptions,
+      webVersionCache: {
+        type: 'remote',
+        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2413.51.html',
       },
     });
+    
+    this.messageHandler = new MessageHandler(this, businessId);
   }
 
   async initialize() {
     // Setup de eventos
     this.client.on('qr', (qr) => {
-      console.log(`QR Code for business ${this.businessId}:`);
-      qrcode.generate(qr, { small: true });
+      console.log(`\n📱 QR Code for business ${this.businessId}:`);
+      console.log(`   Escanea este código QR con WhatsApp para conectar el bot\n`);
+      
+      // Guardar QR code para acceso via API
+      saveQRCode(this.businessId, qr);
+      
+      // En producción, también podemos enviar el QR a un webhook o almacenarlo
+      if (process.env.QR_WEBHOOK_URL) {
+        this.sendQRToWebhook(qr);
+      }
+      
+      // Mostrar QR en consola (útil para desarrollo)
+      if (process.env.NODE_ENV !== 'production' || process.env.SHOW_QR === 'true') {
+        qrcode.generate(qr, { small: true });
+      }
     });
 
     this.client.on('ready', () => {
@@ -42,33 +87,16 @@ export class BookingBot {
     });
 
     this.client.on('message', async (msg) => {
-      await this.handleMessage(msg);
+      console.log(`[Bot] Message received from ${msg.from}: "${msg.body?.substring(0, 50)}"`);
+      try {
+        await this.messageHandler.handleMessage(msg);
+      } catch (error) {
+        console.error(`[Bot] Error handling message:`, error);
+      }
     });
 
     await this.client.initialize();
-  }
-
-  async handleMessage(msg) {
-    try {
-      const from = msg.from;
-      const body = msg.body.toLowerCase().trim();
-
-      // Detectar negocio por número
-      const business = await Business.findByWhatsAppNumber(this.whatsappNumber);
-      if (!business) {
-        console.error(`Business not found for WhatsApp number: ${this.whatsappNumber}`);
-        return;
-      }
-
-      // Lógica básica de respuesta
-      if (body === 'hola' || body === 'hi' || body === 'hello') {
-        await msg.reply(`¡Hola! Bienvenido a ${business.name}. ¿En qué puedo ayudarte?`);
-      } else {
-        await msg.reply('Gracias por tu mensaje. Estamos trabajando en mejorar el bot.');
-      }
-    } catch (error) {
-      console.error('Error handling message:', error);
-    }
+    await this.messageHandler.initialize();
   }
 
   async sendMessage(to, message) {
@@ -82,6 +110,26 @@ export class BookingBot {
 
   async disconnect() {
     await this.client.destroy();
+  }
+
+  async sendQRToWebhook(qr) {
+    try {
+      const response = await fetch(process.env.QR_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessId: this.businessId,
+          qr: qr,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error(`Failed to send QR to webhook: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error(`Error sending QR to webhook: ${error.message}`);
+    }
   }
 }
 
