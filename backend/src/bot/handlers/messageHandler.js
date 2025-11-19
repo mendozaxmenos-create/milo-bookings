@@ -20,6 +20,28 @@ export class MessageHandler {
     await this.reloadSettings();
   }
 
+  /**
+   * Convierte un número a su representación con emojis
+   * @param {number} num - Número a convertir
+   * @returns {string} - String con emojis de números
+   */
+  numberToEmoji(num) {
+    const emojiMap = {
+      '0': '0️⃣',
+      '1': '1️⃣',
+      '2': '2️⃣',
+      '3': '3️⃣',
+      '4': '4️⃣',
+      '5': '5️⃣',
+      '6': '6️⃣',
+      '7': '7️⃣',
+      '8': '8️⃣',
+      '9': '9️⃣'
+    };
+    
+    return num.toString().split('').map(digit => emojiMap[digit]).join('');
+  }
+
   // Recargar configuración desde la base de datos
   async reloadSettings() {
     this.business = await Business.findById(this.businessId);
@@ -255,7 +277,8 @@ Escribe el número o el nombre de la opción que deseas.
 
       let message = '📋 *Servicios Disponibles:*\n\n';
       services.forEach((service, index) => {
-        message += `${index + 1}️⃣ *${service.name}*\n`;
+        const numberEmoji = this.numberToEmoji(index + 1);
+        message += `${numberEmoji} *${service.name}*\n`;
         if (service.description) {
           message += `   ${service.description}\n`;
         }
@@ -285,7 +308,8 @@ Escribe el número o el nombre de la opción que deseas.
 
       let message = '📋 *Selecciona un servicio:*\n\n';
       services.forEach((service, index) => {
-        message += `${index + 1}️⃣ *${service.name}*\n`;
+        const numberEmoji = this.numberToEmoji(index + 1);
+        message += `${numberEmoji} *${service.name}*\n`;
         if (service.description) {
           message += `   ${service.description}\n`;
         }
@@ -549,7 +573,8 @@ Escribe el número o el nombre de la opción que deseas.
       // Mostrar horarios numerados (máximo 12 para no saturar)
       const timesToShow = availableTimes.slice(0, 12);
       timesToShow.forEach((time, index) => {
-        timeMessage += `${index + 1}️⃣ ${time}\n`;
+        const numberEmoji = this.numberToEmoji(index + 1);
+        timeMessage += `${numberEmoji} ${time}\n`;
       });
       
       if (availableTimes.length > 12) {
@@ -682,7 +707,8 @@ Escribe el número o el nombre de la opción que deseas.
           
           const timesToShow = availableTimes.slice(0, 12);
           timesToShow.forEach((time, index) => {
-            timeMessage += `${index + 1}️⃣ ${time}\n`;
+            const numberEmoji = this.numberToEmoji(index + 1);
+            timeMessage += `${numberEmoji} ${time}\n`;
           });
           
           if (availableTimes.length > 12) {
@@ -769,7 +795,8 @@ Escribe el número o el nombre de la opción que deseas.
         insuranceMessage += `*Obras sociales disponibles:*\n\n`;
         
         providers.forEach((provider, index) => {
-          insuranceMessage += `${index + 1}️⃣ *${provider.name}*\n`;
+          const numberEmoji = this.numberToEmoji(index + 1);
+          insuranceMessage += `${numberEmoji} *${provider.name}*\n`;
           insuranceMessage += `   💰 Coseguro: $${parseFloat(provider.copay_amount).toFixed(2)}\n\n`;
         });
         
