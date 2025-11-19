@@ -1064,6 +1064,16 @@ Escribe el número o el nombre de la opción que deseas.
         customer_phone: booking.customer_phone,
       });
 
+      // Enviar notificación al dueño (en segundo plano, no bloquea el flujo)
+      try {
+        const { notifyOwnerNewBooking } = await import('../../services/ownerNotificationService.js');
+        notifyOwnerNewBooking(booking).catch(err => {
+          console.error('[MessageHandler] Error enviando notificación al dueño:', err);
+        });
+      } catch (error) {
+        console.error('[MessageHandler] Error importando servicio de notificaciones:', error);
+      }
+
       // Si no requiere pago, confirmar directamente
       if (!requiresPayment) {
         const confirmationMessage = this.settings?.booking_confirmation_message || 

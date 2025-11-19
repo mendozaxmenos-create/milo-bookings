@@ -13,6 +13,8 @@ export class BusinessSettings {
       insurance_enabled: data.insurance_enabled !== undefined ? data.insurance_enabled : false,
       reminders_enabled: data.reminders_enabled !== undefined ? data.reminders_enabled : false,
       reminder_hours_before: data.reminder_hours_before !== undefined ? data.reminder_hours_before : 24,
+      owner_notifications_enabled: data.owner_notifications_enabled !== undefined ? data.owner_notifications_enabled : true,
+      owner_notification_message: data.owner_notification_message || null,
       updated_at: new Date().toISOString(),
     };
 

@@ -41,6 +41,8 @@ router.put('/', async (req, res) => {
       insurance_enabled,
       reminders_enabled,
       reminder_hours_before,
+      owner_notifications_enabled,
+      owner_notification_message,
     } = req.body;
 
     const settings = await BusinessSettings.createOrUpdate(req.user.business_id, {
@@ -51,6 +53,8 @@ router.put('/', async (req, res) => {
       insurance_enabled,
       reminders_enabled,
       reminder_hours_before,
+      owner_notifications_enabled,
+      owner_notification_message,
     });
 
     // Notificar al bot que debe recargar la configuración

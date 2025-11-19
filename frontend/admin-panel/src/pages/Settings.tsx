@@ -20,6 +20,8 @@ interface BusinessSettings {
   insurance_enabled?: boolean;
   reminders_enabled?: boolean;
   reminder_hours_before?: number;
+  owner_notifications_enabled?: boolean;
+  owner_notification_message?: string;
 }
 
 const DEFAULT_SETTINGS: BusinessSettings = {
@@ -90,6 +92,8 @@ export function Settings() {
   const [insuranceForm, setInsuranceForm] = useState({ name: '', copay_amount: '' });
   const [remindersEnabled, setRemindersEnabled] = useState(false);
   const [reminderHoursBefore, setReminderHoursBefore] = useState(24);
+  const [ownerNotificationsEnabled, setOwnerNotificationsEnabled] = useState(true);
+  const [ownerNotificationMessage, setOwnerNotificationMessage] = useState('');
 
   const { data: insuranceData, isLoading: insuranceLoading } = useQuery({
     queryKey: ['insurance-providers'],
@@ -107,10 +111,14 @@ export function Settings() {
         insurance_enabled: data.data.insurance_enabled || false,
         reminders_enabled: data.data.reminders_enabled || false,
         reminder_hours_before: data.data.reminder_hours_before || 24,
+        owner_notifications_enabled: data.data.owner_notifications_enabled !== undefined ? data.data.owner_notifications_enabled : true,
+        owner_notification_message: data.data.owner_notification_message || '',
       });
       setInsuranceEnabled(data.data.insurance_enabled || false);
       setRemindersEnabled(data.data.reminders_enabled || false);
       setReminderHoursBefore(data.data.reminder_hours_before || 24);
+      setOwnerNotificationsEnabled(data.data.owner_notifications_enabled !== undefined ? data.data.owner_notifications_enabled : true);
+      setOwnerNotificationMessage(data.data.owner_notification_message || '');
     }
   }, [data]);
 
@@ -208,7 +216,13 @@ export function Settings() {
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    updateMutation.mutate(formData);
+    updateMutation.mutate({
+      ...formData,
+      reminders_enabled: remindersEnabled,
+      reminder_hours_before: reminderHoursBefore,
+      owner_notifications_enabled: ownerNotificationsEnabled,
+      owner_notification_message: ownerNotificationMessage || null,
+    });
   };
 
   const handleInsuranceToggle = (enabled: boolean) => {
@@ -342,6 +356,75 @@ export function Settings() {
               
               <small style={{ color: '#6c757d', marginLeft: '2rem' }}>
                 Los recordatorios se enviarán automáticamente a los clientes con reservas confirmadas.
+              </small>
+            </div>
+          </div>
+
+          {/* Sección de Notificaciones al Dueño */}
+          <div style={{ 
+            padding: '1.5rem', 
+            backgroundColor: '#f8f9fa', 
+            borderRadius: '8px',
+            border: '1px solid #dee2e6',
+            marginTop: '1rem'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>🔔 Notificaciones al Dueño</h3>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <input
+                  type="checkbox"
+                  id="owner_notifications_enabled"
+                  checked={ownerNotificationsEnabled}
+                  onChange={(e) => setOwnerNotificationsEnabled(e.target.checked)}
+                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                />
+                <label htmlFor="owner_notifications_enabled" style={{ cursor: 'pointer', fontWeight: 500 }}>
+                  Recibir notificaciones cuando hay una nueva reserva
+                </label>
+              </div>
+              
+              {ownerNotificationsEnabled && (
+                <div style={{ marginLeft: '2rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label htmlFor="owner_notification_message" style={{ fontWeight: 500 }}>
+                    Mensaje personalizado (opcional):
+                  </label>
+                  <textarea
+                    id="owner_notification_message"
+                    value={ownerNotificationMessage}
+                    onChange={(e) => setOwnerNotificationMessage(e.target.value)}
+                    placeholder="🔔 Nueva Reserva
+
+Tienes una nueva reserva:
+
+👤 Cliente: {nombre}
+📞 Teléfono: {telefono}
+📋 Servicio: {servicio}
+📅 Fecha: {fecha}
+🕐 Hora: {hora}
+💰 Monto: ${booking.amount ? `$${Number(booking.amount).toFixed(2)}` : 'Sin pago'}
+📊 Estado: {estado}
+
+{detalles_pago}"
+                    style={{
+                      width: '100%',
+                      minHeight: '150px',
+                      padding: '0.75rem',
+                      borderRadius: '4px',
+                      border: '1px solid #dee2e6',
+                      fontSize: '0.95rem',
+                      fontFamily: 'inherit',
+                      resize: 'vertical',
+                    }}
+                  />
+                  <small style={{ color: '#6c757d' }}>
+                    Puedes usar variables: {'{nombre}'}, {'{telefono}'}, {'{servicio}'}, {'{fecha}'}, {'{hora}'}, {'{estado}'}, {'{detalles_pago}'}. Si no defines un mensaje, se usará uno por defecto.
+                  </small>
+                </div>
+              )}
+              
+              <small style={{ color: '#6c757d', marginLeft: '2rem' }}>
+                Recibirás una notificación por WhatsApp en tu número de dueño cuando alguien haga una reserva.
               </small>
             </div>
           </div>

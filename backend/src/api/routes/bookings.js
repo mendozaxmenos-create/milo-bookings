@@ -86,6 +86,16 @@ router.post('/', async (req, res) => {
       business_id: req.user.business_id,
     });
 
+    // Enviar notificación al dueño (en segundo plano, no bloquea la respuesta)
+    try {
+      const { notifyOwnerNewBooking } = await import('../../services/ownerNotificationService.js');
+      notifyOwnerNewBooking(booking).catch(err => {
+        console.error('[Bookings API] Error enviando notificación al dueño:', err);
+      });
+    } catch (error) {
+      console.error('[Bookings API] Error importando servicio de notificaciones:', error);
+    }
+
     res.status(201).json({ data: booking });
   } catch (error) {
     console.error('Error creating booking:', error);
