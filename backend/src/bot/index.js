@@ -99,6 +99,43 @@ export class BookingBot {
     await this.messageHandler.initialize();
   }
 
+  async disconnect() {
+    try {
+      if (this.client) {
+        await this.client.destroy();
+      }
+    } catch (error) {
+      console.error(`Error desconectando bot para ${this.businessId}:`, error);
+    }
+  }
+
+  /**
+   * Elimina la sesión guardada para forzar nueva autenticación
+   */
+  async clearSession() {
+    try {
+      // Desconectar primero
+      await this.disconnect();
+      
+      // Eliminar directorio de sesión
+      const sessionPath = this.sessionStorage.getLocalAuthPath();
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      
+      try {
+        await fs.rm(sessionPath, { recursive: true, force: true });
+        console.log(`🗑️ Sesión eliminada para negocio ${this.businessId}`);
+      } catch (err) {
+        // Si el directorio no existe, está bien
+        if (err.code !== 'ENOENT') {
+          console.warn(`Advertencia al eliminar sesión: ${err.message}`);
+        }
+      }
+    } catch (error) {
+      console.error(`Error eliminando sesión para ${this.businessId}:`, error);
+    }
+  }
+
   async sendMessage(to, message) {
     try {
       return await this.client.sendMessage(to, message);

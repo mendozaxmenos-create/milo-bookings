@@ -325,20 +325,29 @@ router.post('/businesses/:id/reconnect-bot', async (req, res) => {
       return res.status(400).json({ error: 'Business does not have a WhatsApp number configured' });
     }
     
-    // Desconectar bot existente si hay uno
+    // Desconectar bot existente si hay uno y eliminar sesión guardada
     const existingBot = activeBots.get(req.params.id);
     if (existingBot) {
       try {
-        await existingBot.disconnect();
+        // Eliminar sesión guardada para forzar nueva autenticación y generar QR
+        await existingBot.clearSession();
       } catch (disconnectErr) {
-        console.warn('Error desconectando bot existente:', disconnectErr);
+        console.warn('Error desconectando/limpiando bot existente:', disconnectErr);
       }
       activeBots.delete(req.params.id);
+    } else {
+      // Si no hay bot activo, crear uno temporal solo para limpiar la sesión
+      try {
+        const tempBot = new BookingBot(business.id, business.whatsapp_number);
+        await tempBot.clearSession();
+      } catch (clearErr) {
+        console.warn('Error limpiando sesión guardada:', clearErr);
+      }
     }
     
     // Reinicializar bot
     try {
-      // Crear nuevo bot e inicializar
+      // Crear nuevo bot e inicializar (sin sesión guardada, generará QR)
       const bot = new BookingBot(business.id, business.whatsapp_number);
       // Inicializar en segundo plano para no bloquear la respuesta
       bot.initialize().then(() => {
@@ -351,7 +360,7 @@ router.post('/businesses/:id/reconnect-bot', async (req, res) => {
       // Responder inmediatamente
       res.json({
         message: 'Bot reconectado exitosamente',
-        note: 'El bot se está inicializando. Si necesita autenticación, se generará un nuevo QR code en unos segundos. Haz clic en "Refrescar" en el modal de QR.',
+        note: 'La sesión guardada fue eliminada. El bot se está inicializando y generará un nuevo QR code en unos segundos. Haz clic en "Refrescar" en el modal de QR después de 5-10 segundos.',
       });
     } catch (err) {
       console.error('Error reconectando bot:', err);
