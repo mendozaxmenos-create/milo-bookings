@@ -22,10 +22,27 @@ export function AdminBusinesses() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['admin-businesses'],
     queryFn: getBusinesses,
+    refetchInterval: false, // No hacer polling automático
+    refetchOnWindowFocus: false, // No refrescar al cambiar de ventana
+    staleTime: 5 * 60 * 1000, // Considerar datos válidos por 5 minutos
+    retry: 1, // Solo reintentar 1 vez si falla
   });
+  
+  // Log para debugging - ver qué datos se reciben
+  useEffect(() => {
+    if (data) {
+      console.log('[AdminBusinesses] Datos recibidos:', {
+        total: data?.data?.length || 0,
+        businesses: data?.data?.map((b: Business) => ({ id: b.id, name: b.name, is_active: b.is_active })) || [],
+      });
+    }
+    if (error) {
+      console.error('[AdminBusinesses] Error cargando negocios:', error);
+    }
+  }, [data, error]);
 
   const createMutation = useMutation({
     mutationFn: createBusiness,
