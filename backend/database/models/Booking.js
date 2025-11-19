@@ -20,6 +20,9 @@ export class Booking {
       payment_sandbox_init_point: data.payment_sandbox_init_point || null,
       amount: data.amount,
       notes: data.notes,
+      insurance_provider_id: data.insurance_provider_id || null,
+      copay_amount: data.copay_amount || null,
+      insurance_provider_name: data.insurance_provider_name || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };

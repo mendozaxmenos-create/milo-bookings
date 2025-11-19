@@ -2,6 +2,7 @@ import { Business } from '../../../database/models/Business.js';
 import { BusinessSettings } from '../../../database/models/BusinessSettings.js';
 import { Service } from '../../../database/models/Service.js';
 import { Booking } from '../../../database/models/Booking.js';
+import { InsuranceProvider } from '../../../database/models/InsuranceProvider.js';
 import { AvailabilityService } from '../../services/availabilityService.js';
 import { PaymentConfigService } from '../../services/paymentConfigService.js';
 import { PaymentService } from '../../services/paymentService.js';
@@ -176,6 +177,9 @@ export class MessageHandler {
           break;
         case 'booking_name':
           await this.handleNameInput(msg, body, userId);
+          break;
+        case 'booking_insurance':
+          await this.handleInsuranceSelection(msg, body, userId);
           break;
         case 'booking_confirm':
           await this.handleBookingConfirmation(msg, body, userId);
@@ -726,13 +730,165 @@ Escribe el número o el nombre de la opción que deseas.
       }
 
       const userState = this.userState.get(userId);
+      
+      // Verificar si el negocio tiene habilitado el sistema de coseguro
+      await this.reloadSettings();
+      const insuranceEnabled = this.settings?.insurance_enabled || false;
+      
+      if (insuranceEnabled) {
+        // Si tiene coseguro habilitado, preguntar por obra social
+        const providers = await InsuranceProvider.findByBusiness(this.businessId, false);
+        
+        if (providers.length === 0) {
+          // Si no hay obras sociales configuradas, continuar sin coseguro
+          await msg.reply(
+            `⚠️ El sistema de coseguro está habilitado pero no hay obras sociales configuradas.\n\n` +
+            `Continuando sin coseguro...`
+          );
+          // Continuar al paso de confirmación sin obra social
+          this.userState.set(userId, {
+            ...userState,
+            step: 'booking_confirm',
+            customerName: customerName,
+            selectedInsurance: null,
+            copayAmount: 0,
+          });
+          await this.showBookingConfirmation(msg, userId);
+          return;
+        }
+        
+        // Guardar nombre y pasar al paso de selección de obra social
+        this.userState.set(userId, {
+          ...userState,
+          step: 'booking_insurance',
+          customerName: customerName,
+        });
+        
+        // Mostrar lista de obras sociales
+        let insuranceMessage = `🏥 *¿Qué obra social tenés?*\n\n`;
+        insuranceMessage += `*Obras sociales disponibles:*\n\n`;
+        
+        providers.forEach((provider, index) => {
+          insuranceMessage += `${index + 1}️⃣ *${provider.name}*\n`;
+          insuranceMessage += `   💰 Coseguro: $${parseFloat(provider.copay_amount).toFixed(2)}\n\n`;
+        });
+        
+        insuranceMessage += `💡 *Opciones:*\n`;
+        insuranceMessage += `• Escribe el *número* de tu obra social (ej: 1, 2, 3)\n`;
+        insuranceMessage += `• O escribe el *nombre* de tu obra social\n`;
+        insuranceMessage += `• Escribe *"particular"* si no tenés obra social\n`;
+        insuranceMessage += `• Escribe *"volver"* para cambiar el nombre\n`;
+        insuranceMessage += `• Escribe *"menu"* para volver al inicio`;
+        
+        await msg.reply(insuranceMessage);
+      } else {
+        // Si no tiene coseguro, continuar directamente a confirmación
+        this.userState.set(userId, {
+          ...userState,
+          step: 'booking_confirm',
+          customerName: customerName,
+          selectedInsurance: null,
+          copayAmount: 0,
+        });
+        await this.showBookingConfirmation(msg, userId);
+      }
+    } catch (error) {
+      console.error('Error handling name input:', error);
+      await msg.reply('Error al procesar el nombre. Por favor intenta de nuevo.');
+    }
+  }
+
+  async handleInsuranceSelection(msg, body, userId) {
+    try {
+      const userState = this.userState.get(userId);
+      
+      // Manejar comandos de navegación
+      if (body === 'volver' || body === 'atras' || body === 'anterior') {
+        this.userState.set(userId, {
+          ...userState,
+          step: 'booking_name',
+          selectedInsurance: undefined,
+          copayAmount: undefined,
+        });
+        await msg.reply(
+          `👤 *Ahora necesitamos tu nombre:*\n\n` +
+          `Por favor escribe tu nombre completo para la reserva.\n\n` +
+          `💡 Escribe *"volver"* para elegir otro horario o *"menu"* para volver al inicio`
+        );
+        return;
+      }
+
+      if (body === 'menu' || body === 'inicio' || body === 'cancelar') {
+        await this.showMainMenu(msg);
+        this.userState.set(userId, { step: 'menu' });
+        return;
+      }
+
+      // Obtener obras sociales disponibles
+      const providers = await InsuranceProvider.findByBusiness(this.businessId, false);
+      
+      let selectedProvider = null;
+      
+      // Intentar selección por número
+      const numberMatch = body.match(/^(\d+)$/);
+      if (numberMatch) {
+        const selectedIndex = parseInt(numberMatch[1]) - 1;
+        if (selectedIndex >= 0 && selectedIndex < providers.length) {
+          selectedProvider = providers[selectedIndex];
+        } else {
+          await msg.reply(
+            `❌ Número inválido. Por favor selecciona un número entre 1 y ${providers.length}.\n\n` +
+            `💡 Escribe *"volver"* para cambiar el nombre o *"menu"* para volver al inicio`
+          );
+          return;
+        }
+      } else if (body === 'particular' || body === 'sin obra social' || body === 'no tengo') {
+        // Usuario sin obra social
+        selectedProvider = null;
+      } else {
+        // Intentar buscar por nombre (case insensitive)
+        const searchName = body.trim();
+        selectedProvider = providers.find(p => 
+          p.name.toLowerCase().includes(searchName.toLowerCase()) ||
+          searchName.toLowerCase().includes(p.name.toLowerCase())
+        );
+        
+        if (!selectedProvider) {
+          await msg.reply(
+            `❌ No se encontró la obra social "${body}".\n\n` +
+            `💡 *Opciones:*\n` +
+            `• Escribe el *número* de tu obra social (ej: 1, 2, 3)\n` +
+            `• O escribe el *nombre* exacto de tu obra social\n` +
+            `• Escribe *"particular"* si no tenés obra social\n` +
+            `• Escribe *"volver"* para cambiar el nombre\n` +
+            `• Escribe *"menu"* para volver al inicio`
+          );
+          return;
+        }
+      }
+
+      // Guardar selección y pasar a confirmación
+      const copayAmount = selectedProvider ? parseFloat(selectedProvider.copay_amount) : 0;
+      
       this.userState.set(userId, {
         ...userState,
         step: 'booking_confirm',
-        customerName: customerName,
+        selectedInsurance: selectedProvider,
+        copayAmount: copayAmount,
       });
+      
+      await this.showBookingConfirmation(msg, userId);
+    } catch (error) {
+      console.error('Error handling insurance selection:', error);
+      await msg.reply('Error al procesar la selección de obra social. Por favor intenta de nuevo.');
+    }
+  }
 
-      const { selectedService, bookingDate, bookingTime } = userState;
+  async showBookingConfirmation(msg, userId) {
+    try {
+      const userState = this.userState.get(userId);
+      const { selectedService, bookingDate, bookingTime, customerName, selectedInsurance, copayAmount } = userState;
+      
       // Parsear bookingDate (YYYY-MM-DD) y crear Date en zona horaria local
       const [year, month, day] = bookingDate.split('-').map(Number);
       const dateObj = new Date(year, month - 1, day);
@@ -743,22 +899,42 @@ Escribe el número o el nombre de la opción que deseas.
         day: 'numeric'
       });
 
-      // Mostrar resumen y solicitar confirmación
-      await msg.reply(
-        `📋 *Resumen de tu Reserva:*\n\n` +
-        `👤 Nombre: ${customerName}\n` +
-        `💼 Servicio: ${selectedService.name}\n` +
-        `📅 Fecha: ${formattedDate}\n` +
-        `🕐 Hora: ${bookingTime}\n` +
-        `⏱️ Duración: ${selectedService.duration_minutes} minutos\n` +
-        `💰 Precio: $${selectedService.price.toFixed(2)}\n\n` +
-        `¿Confirmas esta reserva? Responde:\n` +
-        `✅ *Sí* o *Confirmar* para confirmar\n` +
-        `❌ *No* o *Cancelar* para cancelar`
-      );
+      // Calcular total
+      const servicePrice = parseFloat(selectedService.price);
+      const copay = parseFloat(copayAmount) || 0;
+      const totalAmount = servicePrice + copay;
+
+      // Construir mensaje de resumen
+      let summaryMessage = `📋 *Resumen de tu Reserva:*\n\n`;
+      summaryMessage += `👤 Nombre: ${customerName}\n`;
+      summaryMessage += `💼 Servicio: ${selectedService.name}\n`;
+      summaryMessage += `📅 Fecha: ${formattedDate}\n`;
+      summaryMessage += `🕐 Hora: ${bookingTime}\n`;
+      summaryMessage += `⏱️ Duración: ${selectedService.duration_minutes} minutos\n`;
+      
+      // Agregar información de obra social si aplica
+      if (selectedInsurance) {
+        summaryMessage += `🏥 Obra Social: ${selectedInsurance.name}\n`;
+        summaryMessage += `💰 Coseguro: $${copay.toFixed(2)}\n`;
+      }
+      
+      summaryMessage += `\n💰 *Precio del Servicio:* $${servicePrice.toFixed(2)}\n`;
+      
+      if (copay > 0) {
+        summaryMessage += `💰 *Coseguro:* $${copay.toFixed(2)}\n`;
+        summaryMessage += `💰 *Total a Pagar:* $${totalAmount.toFixed(2)}\n`;
+      } else {
+        summaryMessage += `💰 *Total:* $${totalAmount.toFixed(2)}\n`;
+      }
+      
+      summaryMessage += `\n¿Confirmas esta reserva? Responde:\n`;
+      summaryMessage += `✅ *Sí* o *Confirmar* para confirmar\n`;
+      summaryMessage += `❌ *No* o *Cancelar* para cancelar`;
+
+      await msg.reply(summaryMessage);
     } catch (error) {
-      console.error('Error handling name input:', error);
-      await msg.reply('Error al procesar el nombre. Por favor intenta de nuevo.');
+      console.error('Error showing booking confirmation:', error);
+      await msg.reply('Error al mostrar el resumen. Por favor intenta de nuevo.');
     }
   }
 
@@ -801,6 +977,15 @@ Escribe el número o el nombre de la opción que deseas.
       const customerPhone = await this.getCustomerPhone(msg);
       
       const paymentsEnabled = await PaymentConfigService.isEnabled(this.businessId);
+      
+      // Obtener información de obra social si está seleccionada
+      const selectedInsurance = userState.selectedInsurance || null;
+      const copayAmount = userState.copayAmount || 0;
+      const insuranceProviderName = selectedInsurance ? selectedInsurance.name : null;
+      const insuranceProviderId = selectedInsurance ? selectedInsurance.id : null;
+      
+      // Calcular monto total (precio del servicio + coseguro si aplica)
+      const totalAmount = parseFloat(selectedService.price) + parseFloat(copayAmount);
 
       console.log('[MessageHandler] Creating booking:', {
         business_id: this.businessId,
@@ -809,7 +994,11 @@ Escribe el número o el nombre de la opción que deseas.
         customer_name: customerName,
         booking_date: bookingDate,
         booking_time: bookingTime,
-        amount: selectedService.price,
+        amount: totalAmount,
+        service_price: selectedService.price,
+        copay_amount: copayAmount,
+        insurance_provider_id: insuranceProviderId,
+        insurance_provider_name: insuranceProviderName,
         paymentsEnabled,
       });
       
@@ -820,7 +1009,10 @@ Escribe el número o el nombre de la opción que deseas.
         customer_name: customerName,
         booking_date: bookingDate,
         booking_time: bookingTime,
-        amount: selectedService.price,
+        amount: totalAmount,
+        insurance_provider_id: insuranceProviderId,
+        copay_amount: copayAmount,
+        insurance_provider_name: insuranceProviderName,
         status: paymentsEnabled ? 'pending_payment' : 'pending',
         payment_status: 'pending',
       });

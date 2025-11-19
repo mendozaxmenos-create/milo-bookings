@@ -10,6 +10,7 @@ export class BusinessSettings {
       booking_confirmation_message: data.booking_confirmation_message,
       payment_instructions_message: data.payment_instructions_message,
       reminder_message: data.reminder_message,
+      insurance_enabled: data.insurance_enabled !== undefined ? data.insurance_enabled : false,
       updated_at: new Date().toISOString(),
     };
 

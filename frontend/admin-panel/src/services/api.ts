@@ -232,3 +232,54 @@ export const updateSubscriptionPrice = async (price: string): Promise<Subscripti
   return response.data;
 };
 
+// Insurance Providers API
+export interface InsuranceProvider {
+  id: string;
+  business_id: string;
+  name: string;
+  copay_amount: number;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InsuranceProviderListResponse {
+  data: InsuranceProvider[];
+}
+
+export interface InsuranceProviderResponse {
+  data: InsuranceProvider;
+}
+
+export interface CreateInsuranceProviderRequest {
+  name: string;
+  copay_amount: number;
+  display_order?: number;
+  is_active?: boolean;
+}
+
+export const getInsuranceProviders = async (): Promise<InsuranceProviderListResponse> => {
+  const response = await api.get<InsuranceProviderListResponse>('/api/insurance');
+  return response.data;
+};
+
+export const createInsuranceProvider = async (data: CreateInsuranceProviderRequest): Promise<InsuranceProviderResponse> => {
+  const response = await api.post<InsuranceProviderResponse>('/api/insurance', data);
+  return response.data;
+};
+
+export const updateInsuranceProvider = async (id: string, data: Partial<CreateInsuranceProviderRequest>): Promise<InsuranceProviderResponse> => {
+  const response = await api.put<InsuranceProviderResponse>(`/api/insurance/${id}`, data);
+  return response.data;
+};
+
+export const deleteInsuranceProvider = async (id: string): Promise<void> => {
+  await api.delete(`/api/insurance/${id}`);
+};
+
+export const toggleInsuranceProvider = async (id: string): Promise<InsuranceProviderResponse> => {
+  const response = await api.patch<InsuranceProviderResponse>(`/api/insurance/${id}/toggle`);
+  return response.data;
+};
+

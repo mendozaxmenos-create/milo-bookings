@@ -39,6 +39,9 @@ export const validateBooking = (data, isUpdate = false) => {
     payment_id: Joi.string().optional().allow('', null),
     amount: isUpdate ? Joi.number().min(0).precision(2).optional() : Joi.number().min(0).precision(2).required(),
     notes: Joi.string().max(1000).optional().allow('', null),
+    insurance_provider_id: Joi.string().optional().allow('', null),
+    copay_amount: Joi.number().min(0).precision(2).optional().allow(null),
+    insurance_provider_name: Joi.string().max(255).optional().allow('', null),
   });
 
   return schema.validate(data);

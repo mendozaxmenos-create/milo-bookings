@@ -12,6 +12,7 @@ import availabilityRoutes from './routes/availability.js';
 import paymentRoutes from './routes/payments.js';
 import botRoutes from './routes/bot.js';
 import adminRoutes from './routes/admin.js';
+import insuranceRoutes from './routes/insurance.js';
 
 dotenv.config();
 
@@ -186,6 +187,7 @@ app.use('/api/availability', availabilityRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/bot', botRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/insurance', insuranceRoutes);
 
 // Error handling
 app.use((err, req, res, next) => {
