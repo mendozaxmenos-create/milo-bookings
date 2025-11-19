@@ -145,8 +145,8 @@
 
 ### 5. 📱 Notificaciones Push
 - ✅ Notificaciones por WhatsApp al dueño
-- ❌ Notificaciones push en el navegador
-- ❌ Notificaciones por email
+- ❌ Notificaciones push en el navegador (Feature Premium - Plan Premium)
+- ❌ Notificaciones por email (Feature Premium - Plan Premium)
 
 ### 6. 👥 CRM de Clientes
 - ✅ Historial de reservas por cliente (visible en tabla de reservas)
@@ -161,8 +161,17 @@
 
 ### 8. 🌐 Internacionalización
 - ✅ Mensajes en español (hardcoded)
-- ❌ Soporte multi-idioma
-- ❌ Traducciones
+- ❌ Soporte multi-idioma (Feature Premium)
+- ❌ Traducciones (Feature Premium)
+
+### 9. 💾 Backup Automático
+- ✅ Servicio de backup automático diario
+- ✅ Backup manual desde API (Super Admin)
+- ✅ Listar backups disponibles
+- ✅ Descargar backups
+- ✅ Restaurar backups
+- ✅ Limpieza automática (mantiene últimos 7 backups)
+- ⚠️ Solo disponible en producción con PostgreSQL
 
 ---
 

@@ -403,3 +403,51 @@ export const toggleServiceResourceActive = async (id: string): Promise<{ data: S
   return response.data;
 };
 
+// Backups API (Super Admin only)
+export interface Backup {
+  fileName: string;
+  size: number;
+  sizeMB: number;
+  createdAt: string;
+  modifiedAt: string;
+}
+
+export interface BackupListResponse {
+  data: Backup[];
+}
+
+export interface CreateBackupResponse {
+  data: Backup & {
+    filePath: string;
+  };
+  message: string;
+}
+
+export const getBackups = async (): Promise<BackupListResponse> => {
+  const response = await api.get<BackupListResponse>('/api/backups');
+  return response.data;
+};
+
+export const createBackup = async (): Promise<CreateBackupResponse> => {
+  const response = await api.post<CreateBackupResponse>('/api/backups');
+  return response.data;
+};
+
+export const downloadBackup = async (fileName: string): Promise<Blob> => {
+  const response = await api.get(`/api/backups/${fileName}`, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+export const deleteBackup = async (fileName: string): Promise<void> => {
+  await api.delete(`/api/backups/${fileName}`);
+};
+
+export const restoreBackup = async (fileName: string): Promise<{ message: string; warning: string }> => {
+  const response = await api.post<{ message: string; warning: string }>(`/api/backups/${fileName}/restore`, {
+    confirm: 'yes-i-want-to-restore-this-backup',
+  });
+  return response.data;
+};
+

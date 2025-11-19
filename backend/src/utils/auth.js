@@ -45,12 +45,17 @@ export function authenticateToken(req, res, next) {
 }
 
 /**
- * Middleware para verificar que el usuario es super admin
+ * Middleware para requerir autenticación de super admin
  */
 export function requireSuperAdmin(req, res, next) {
-  if (!req.user || req.user.role !== 'super_admin' || !req.user.is_system_user) {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  if (!req.user.is_system_user || req.user.role !== 'super_admin') {
     return res.status(403).json({ error: 'Super admin access required' });
   }
+
   next();
 }
 

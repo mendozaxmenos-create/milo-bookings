@@ -4,6 +4,7 @@ import { BookingBot } from './bot/index.js';
 import { Business } from '../database/models/Business.js';
 import { startTrialChecker } from './services/trialService.js';
 import { startReminderService } from './services/reminderService.js';
+import { startBackupService } from './services/backupService.js';
 import knex from 'knex';
 import config from '../knexfile.js';
 import { seed as seedDemo } from '../database/seeds/001_demo_data.js';
@@ -135,6 +136,20 @@ app.listen(PORT, '0.0.0.0', async () => {
   
   // Iniciar servicio de recordatorios
   startReminderService();
+
+  // Iniciar servicio de backup automático (solo en producción y si DATABASE_URL está configurada)
+  if (process.env.DATABASE_URL && process.env.NODE_ENV === 'production') {
+    const backupHour = parseInt(process.env.BACKUP_HOUR || '2', 10); // Default: 2 AM
+    try {
+      startBackupService(backupHour);
+      console.log(`[Init] ✅ Servicio de backup automático iniciado (ejecución diaria a las ${backupHour}:00)`);
+    } catch (error) {
+      console.error('[Init] ⚠️ Error iniciando servicio de backup:', error.message);
+      console.error('[Init] El servidor continuará sin backups automáticos');
+    }
+  } else {
+    console.log('[Init] ⚠️ Backup automático deshabilitado (solo disponible en producción con DATABASE_URL)');
+  }
   
   console.log('\n✅ Backend listo para recibir peticiones\n');
 });
