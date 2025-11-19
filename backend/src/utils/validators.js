@@ -1,4 +1,5 @@
 import Joi from 'joi';
+import { sanitizeObject, sanitizeName, sanitizePhone, sanitizeEmail, sanitizeText } from './sanitize.js';
 
 export const validateBusiness = (data, isUpdate = false) => {
   const schema = Joi.object({
@@ -15,6 +16,12 @@ export const validateBusiness = (data, isUpdate = false) => {
 };
 
 export const validateService = (data, isUpdate = false) => {
+  // Sanitizar inputs primero
+  const sanitizedData = sanitizeObject(data, {
+    name: 'string',
+    description: 'text',
+  });
+
   const schema = Joi.object({
     name: isUpdate ? Joi.string().min(1).max(255).optional() : Joi.string().min(1).max(255).required(),
     description: Joi.string().max(1000).optional().allow('', null),
@@ -25,10 +32,18 @@ export const validateService = (data, isUpdate = false) => {
     requires_payment: Joi.boolean().optional(),
   });
 
-  return schema.validate(data);
+  return schema.validate(sanitizedData);
 };
 
 export const validateBooking = (data, isUpdate = false) => {
+  // Sanitizar inputs primero
+  const sanitizedData = sanitizeObject(data, {
+    customer_name: 'name',
+    customer_phone: 'phone',
+    notes: 'text',
+    insurance_provider_name: 'string',
+  });
+
   const schema = Joi.object({
     service_id: isUpdate ? Joi.string().min(1).optional() : Joi.string().min(1).required(),
     customer_phone: isUpdate ? Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).optional() : Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).required(),
@@ -45,10 +60,17 @@ export const validateBooking = (data, isUpdate = false) => {
     insurance_provider_name: Joi.string().max(255).optional().allow('', null),
   });
 
-  return schema.validate(data);
+  return schema.validate(sanitizedData);
 };
 
 export const validateLogin = (data) => {
+  // Sanitizar inputs primero
+  const sanitizedData = sanitizeObject(data, {
+    email: 'email',
+    phone: 'phone',
+    business_id: 'string',
+  });
+
   // Para super admin: email + password
   // Para business user: business_id + phone + password
   const schema = Joi.object({
@@ -66,10 +88,16 @@ export const validateLogin = (data) => {
     password: Joi.string().min(6).required(),
   }).or('email', 'business_id');
 
-  return schema.validate(data);
+  return schema.validate(sanitizedData);
 };
 
 export const validateRegister = (data) => {
+  // Sanitizar inputs primero
+  const sanitizedData = sanitizeObject(data, {
+    business_id: 'string',
+    phone: 'phone',
+  });
+
   const schema = Joi.object({
     business_id: Joi.string().required(),
     phone: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).required(),
@@ -77,7 +105,7 @@ export const validateRegister = (data) => {
     role: Joi.string().valid('owner', 'admin', 'staff').optional(),
   });
 
-  return schema.validate(data);
+  return schema.validate(sanitizedData);
 };
 
 export const validatePaymentConfig = (data) => {
@@ -93,6 +121,13 @@ export const validatePaymentConfig = (data) => {
 };
 
 export const validatePasswordResetRequest = (data) => {
+  // Sanitizar inputs primero
+  const sanitizedData = sanitizeObject(data, {
+    email: 'email',
+    phone: 'phone',
+    business_id: 'string',
+  });
+
   // Para business users: business_id + phone
   // Para system users (super admin): email
   const schema = Joi.object({
@@ -109,7 +144,7 @@ export const validatePasswordResetRequest = (data) => {
     }),
   }).or('email', 'business_id');
 
-  return schema.validate(data);
+  return schema.validate(sanitizedData);
 };
 
 export const validatePasswordReset = (data) => {

@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import { apiLogger } from '../utils/logger.js';
 import authRoutes from './routes/auth.js';
 import businessRoutes from './routes/businesses.js';
 import serviceRoutes from './routes/services.js';
@@ -59,9 +60,15 @@ app.use(helmet({
   contentSecurityPolicy: false,
 }));
 
-// Logging middleware
+// Logging middleware estructurado
 app.use((req, res, next) => {
-  console.log(`[API] ${req.method} ${req.path} - ${new Date().toISOString()}`);
+  // Solo loggear en modo debug o para rutas importantes
+  if (process.env.LOG_LEVEL === 'DEBUG' || req.path.includes('/api/')) {
+    apiLogger.debug(`${req.method} ${req.path}`, {
+      ip: req.ip || req.connection.remoteAddress,
+      userAgent: req.get('user-agent'),
+    });
+  }
   next();
 });
 
@@ -247,20 +254,33 @@ app.use('/api/bot', botRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/insurance', insuranceRoutes);
 
-// Error handling
+// Error handling con logging estructurado
 app.use((err, req, res, next) => {
-  console.error('[Error Handler]', {
-    message: err.message,
-    stack: err.stack,
+  const errorMeta = {
     path: req.path,
     method: req.method,
-  });
-  
+    ip: req.ip || req.connection.remoteAddress,
+    userAgent: req.get('user-agent'),
+    userId: req.user?.user_id || null,
+    businessId: req.user?.business_id || null,
+    stack: err.stack,
+  };
+
+  // Log del error con contexto
+  apiLogger.error(err.message || 'Unhandled error', errorMeta);
+
   // En producción, mostrar mensaje de error pero no el stack completo
   const isProduction = process.env.NODE_ENV === 'production';
-  res.status(err.status || 500).json({ 
-    error: isProduction ? err.message || 'Something went wrong!' : err.message,
-    ...(isProduction ? {} : { stack: err.stack }),
+  const statusCode = err.status || err.statusCode || 500;
+
+  res.status(statusCode).json({ 
+    error: isProduction && statusCode === 500 
+      ? 'Internal server error' 
+      : (err.message || 'Something went wrong!'),
+    ...(isProduction ? {} : { 
+      stack: err.stack,
+      path: req.path,
+    }),
   });
 });
 

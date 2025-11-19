@@ -5,6 +5,7 @@ import { SystemUser } from '../../../database/models/SystemUser.js';
 import { generateToken } from '../../utils/auth.js';
 import { validateLogin, validateRegister, validatePasswordResetRequest, validatePasswordReset } from '../../utils/validators.js';
 import { sendPasswordResetToken, sendSystemUserPasswordResetToken, resetPasswordWithToken } from '../../services/passwordResetService.js';
+import { authLogger } from '../../utils/logger.js';
 
 const router = express.Router();
 
@@ -39,16 +40,19 @@ const registerLimiter = rateLimit({
 // Login (con rate limiting)
 router.post('/login', loginLimiter, async (req, res, next) => {
   try {
-    console.log('[Auth] Login attempt:', {
+    authLogger.debug('Login attempt', {
       hasEmail: !!req.body.email,
       hasBusinessId: !!req.body.business_id,
       hasPhone: !!req.body.phone,
-      timestamp: new Date().toISOString(),
+      ip: req.ip || req.connection.remoteAddress,
     });
     
     const { error, value } = validateLogin(req.body);
     if (error) {
-      console.log('[Auth] Login validation error:', error.details[0].message);
+      authLogger.warn('Login validation failed', {
+        error: error.details[0].message,
+        ip: req.ip || req.connection.remoteAddress,
+      });
       return res.status(400).json({ error: error.details[0].message });
     }
 
@@ -86,25 +90,37 @@ router.post('/login', loginLimiter, async (req, res, next) => {
 
     // Login como business user
     if (!business_id || !phone) {
-      console.log('[Auth] Missing business_id or phone for business user login');
+      authLogger.warn('Missing business_id or phone for business user login', {
+        ip: req.ip || req.connection.remoteAddress,
+      });
       return res.status(400).json({ error: 'business_id and phone are required for business users' });
     }
 
-    console.log('[Auth] Looking for business user:', { business_id, phone });
+    authLogger.debug('Looking for business user', { business_id, phone });
     const user = await BusinessUser.findByBusinessAndPhone(business_id, phone);
     if (!user) {
-      console.log('[Auth] Business user not found');
+      authLogger.warn('Business user not found', { business_id, phone, ip: req.ip || req.connection.remoteAddress });
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    console.log('[Auth] Business user found, verifying password...');
+    authLogger.debug('Business user found, verifying password');
     const isValid = await BusinessUser.verifyPassword(user, password);
     if (!isValid) {
-      console.log('[Auth] Invalid password for business user');
+      authLogger.warn('Invalid password for business user', {
+        business_id,
+        phone,
+        userId: user.id,
+        ip: req.ip || req.connection.remoteAddress,
+      });
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    console.log('[Auth] Login successful for business user:', { user_id: user.id, business_id: user.business_id });
+    authLogger.info('Login successful', {
+      userId: user.id,
+      businessId: user.business_id,
+      role: user.role,
+      ip: req.ip || req.connection.remoteAddress,
+    });
 
     const token = generateToken({
       user_id: user.id,
@@ -124,15 +140,16 @@ router.post('/login', loginLimiter, async (req, res, next) => {
         is_system_user: false,
       },
     });
-  } catch (error) {
-    console.error('[Auth] Login error:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name,
-    });
-    // Pasar el error al error handler de Express
-    next(error);
-  }
+    } catch (error) {
+      authLogger.error('Login error', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        ip: req.ip || req.connection.remoteAddress,
+      });
+      // Pasar el error al error handler de Express
+      next(error);
+    }
 });
 
 // Register (solo para desarrollo, en producción debería ser por invitación)
@@ -174,10 +191,14 @@ router.post('/register', registerLimiter, async (req, res) => {
         role: user.role,
       },
     });
-  } catch (error) {
-    console.error('Register error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+    } catch (error) {
+      authLogger.error('Register error', {
+        error: error.message,
+        stack: error.stack,
+        ip: req.ip || req.connection.remoteAddress,
+      });
+      res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 // Solicitar recuperación de contraseña (con rate limiting estricto)
@@ -226,10 +247,14 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
     }
 
     return res.status(400).json({ error: 'email o (business_id + phone) requerido' });
-  } catch (error) {
-    console.error('Forgot password error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+    } catch (error) {
+      authLogger.error('Forgot password error', {
+        error: error.message,
+        stack: error.stack,
+        ip: req.ip || req.connection.remoteAddress,
+      });
+      res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 // Resetear contraseña con token (con rate limiting estricto)

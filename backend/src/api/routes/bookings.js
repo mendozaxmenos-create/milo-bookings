@@ -2,6 +2,7 @@ import express from 'express';
 import { Booking } from '../../../database/models/Booking.js';
 import { authenticateToken } from '../../utils/auth.js';
 import { validateBooking } from '../../utils/validators.js';
+import { apiLogger } from '../../utils/logger.js';
 
 const router = express.Router();
 
@@ -11,9 +12,9 @@ router.use(authenticateToken);
 // Listar reservas del negocio
 router.get('/', async (req, res) => {
   try {
-    console.log('[API] GET /bookings - User:', {
-      user_id: req.user.user_id,
-      business_id: req.user.business_id,
+    apiLogger.debug('GET /bookings', {
+      userId: req.user.user_id,
+      businessId: req.user.business_id,
       role: req.user.role,
     });
     
@@ -26,43 +27,34 @@ router.get('/', async (req, res) => {
       limit: parseInt(req.query.limit) || 20,
     };
 
-    console.log('[API] GET /bookings - Filters:', filters);
-
     const result = await Booking.findByBusiness(req.user.business_id, filters);
     
     // Si el resultado tiene paginación (estructura nueva)
     if (result && result.pagination) {
-      console.log('[API] GET /bookings - Found bookings with pagination:', {
+      apiLogger.info('Bookings retrieved', {
+        businessId: req.user.business_id,
         count: result.data?.length || 0,
         total: result.pagination.total,
         page: result.pagination.page,
         totalPages: result.pagination.totalPages,
-        business_id: req.user.business_id,
       });
-      
-      if (result.data && result.data.length > 0) {
-        console.log('[API] GET /bookings - Sample booking:', {
-          id: result.data[0].id,
-          customer_name: result.data[0].customer_name,
-          customer_phone: result.data[0].customer_phone,
-          status: result.data[0].status,
-          booking_date: result.data[0].booking_date,
-        });
-      }
       
       return res.json(result);
     }
     
     // Compatibilidad con formato anterior (sin paginación)
-    console.log('[API] GET /bookings - Found bookings (legacy):', {
+    apiLogger.info('Bookings retrieved (legacy format)', {
+      businessId: req.user.business_id,
       count: result?.length || 0,
-      business_id: req.user.business_id,
-      statuses: result?.map(b => b.status) || [],
     });
     
     res.json({ data: result });
   } catch (error) {
-    console.error('[API] Error listing bookings:', error);
+    apiLogger.error('Error listing bookings', {
+      businessId: req.user.business_id,
+      error: error.message,
+      stack: error.stack,
+    });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
