@@ -29,7 +29,7 @@ export const validateService = (data, isUpdate = false) => {
 
 export const validateBooking = (data, isUpdate = false) => {
   const schema = Joi.object({
-    service_id: isUpdate ? Joi.string().uuid().optional() : Joi.string().uuid().required(),
+    service_id: isUpdate ? Joi.string().min(1).optional() : Joi.string().min(1).required(),
     customer_phone: isUpdate ? Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).optional() : Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).required(),
     customer_name: Joi.string().max(255).optional().allow('', null),
     booking_date: isUpdate ? Joi.date().iso().optional() : Joi.date().iso().required(),
