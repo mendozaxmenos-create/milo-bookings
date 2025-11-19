@@ -60,5 +60,33 @@ export class BusinessUser {
       .where({ business_id: businessId })
       .orderBy('created_at', 'desc');
   }
+
+  static async findByResetToken(token) {
+    const user = await db('business_users')
+      .where({ password_reset_token: token })
+      .where('password_reset_expires', '>', new Date().toISOString())
+      .first();
+    return user;
+  }
+
+  static async setResetToken(userId, token, expiresAt) {
+    await db('business_users')
+      .where({ id: userId })
+      .update({
+        password_reset_token: token,
+        password_reset_expires: expiresAt,
+        updated_at: new Date().toISOString(),
+      });
+  }
+
+  static async clearResetToken(userId) {
+    await db('business_users')
+      .where({ id: userId })
+      .update({
+        password_reset_token: null,
+        password_reset_expires: null,
+        updated_at: new Date().toISOString(),
+      });
+  }
 }
 

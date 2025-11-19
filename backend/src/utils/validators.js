@@ -92,3 +92,21 @@ export const validatePaymentConfig = (data) => {
   return schema.validate(data);
 };
 
+export const validatePasswordResetRequest = (data) => {
+  const schema = Joi.object({
+    business_id: Joi.string().required(),
+    phone: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).required(),
+  });
+
+  return schema.validate(data);
+};
+
+export const validatePasswordReset = (data) => {
+  const schema = Joi.object({
+    token: Joi.string().length(64).required(), // Token de 64 caracteres (32 bytes en hex)
+    password: Joi.string().min(6).required(),
+  });
+
+  return schema.validate(data);
+};
+

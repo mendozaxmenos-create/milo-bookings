@@ -2,7 +2,8 @@ import express from 'express';
 import { BusinessUser } from '../../../database/models/BusinessUser.js';
 import { SystemUser } from '../../../database/models/SystemUser.js';
 import { generateToken } from '../../utils/auth.js';
-import { validateLogin, validateRegister } from '../../utils/validators.js';
+import { validateLogin, validateRegister, validatePasswordResetRequest, validatePasswordReset } from '../../utils/validators.js';
+import { sendPasswordResetToken, resetPasswordWithToken } from '../../services/passwordResetService.js';
 
 const router = express.Router();
 
@@ -146,6 +147,57 @@ router.post('/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Register error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Solicitar recuperación de contraseña
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { error, value } = validatePasswordResetRequest(req.body);
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+    }
+
+    const { business_id, phone } = value;
+
+    // Enviar token por WhatsApp
+    const result = await sendPasswordResetToken(business_id, phone);
+
+    // Por seguridad, siempre devolvemos éxito (no revelamos si el usuario existe)
+    res.json({
+      message: 'Si el usuario existe, recibirás un código de recuperación por WhatsApp',
+      success: true,
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Resetear contraseña con token
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { error, value } = validatePasswordReset(req.body);
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+    }
+
+    const { token, password } = value;
+
+    // Resetear contraseña
+    const result = await resetPasswordWithToken(token, password);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error || 'Token inválido o expirado' });
+    }
+
+    res.json({
+      message: 'Contraseña restablecida exitosamente',
+      success: true,
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

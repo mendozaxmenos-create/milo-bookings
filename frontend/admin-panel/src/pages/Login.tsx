@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { login } from '../services/api';
+import { login, forgotPassword, resetPassword } from '../services/api';
 
 export function Login() {
+  const [searchParams] = useSearchParams();
+  const resetToken = searchParams.get('token');
+  
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [businessId, setBusinessId] = useState('');
   const [phone, setPhone] = useState('');
@@ -11,6 +14,17 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Estados para recuperación de contraseña
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(!!resetToken);
+  const [resetTokenInput, setResetTokenInput] = useState(resetToken || '');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
+  
   const navigate = useNavigate();
   const { login: setAuth } = useAuthStore();
 
@@ -58,6 +72,324 @@ export function Login() {
       setLoading(false);
     }
   };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccessMessage('');
+    setForgotPasswordLoading(true);
+
+    try {
+      await forgotPassword({ business_id: businessId, phone });
+      setSuccessMessage('Si el usuario existe, recibirás un código de recuperación por WhatsApp. Revisa tu teléfono.');
+      setShowForgotPassword(false);
+    } catch (err: any) {
+      console.error('Forgot password error:', err);
+      setError(err?.response?.data?.error || 'Error al solicitar recuperación de contraseña');
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccessMessage('');
+
+    if (newPassword !== confirmPassword) {
+      setError('Las contraseñas no coinciden');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    setResetPasswordLoading(true);
+
+    try {
+      await resetPassword({ token: resetTokenInput, password: newPassword });
+      setSuccessMessage('Contraseña restablecida exitosamente. Redirigiendo al login...');
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+    } catch (err: any) {
+      console.error('Reset password error:', err);
+      setError(err?.response?.data?.error || 'Error al restablecer contraseña. El token puede ser inválido o haber expirado.');
+    } finally {
+      setResetPasswordLoading(false);
+    }
+  };
+
+  // Si hay token en la URL, mostrar formulario de reset
+  if (showResetPassword) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh',
+        backgroundColor: '#f5f5f5'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          padding: '2rem',
+          borderRadius: '8px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+          width: '100%',
+          maxWidth: '400px'
+        }}>
+          <h1 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+            🔐 Recuperar Contraseña
+          </h1>
+          
+          <form onSubmit={handleResetPassword}>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem' }}>
+                Código de recuperación
+              </label>
+              <input
+                type="text"
+                value={resetTokenInput}
+                onChange={(e) => setResetTokenInput(e.target.value)}
+                required
+                placeholder="Ingresa el código recibido por WhatsApp"
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem' }}>
+                Nueva contraseña
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                minLength={6}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem' }}>
+                Confirmar nueva contraseña
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px'
+                }}
+              />
+            </div>
+
+            {error && (
+              <div style={{
+                color: 'red',
+                marginBottom: '1rem',
+                padding: '0.5rem',
+                backgroundColor: '#fee',
+                borderRadius: '4px'
+              }}>
+                {error}
+              </div>
+            )}
+
+            {successMessage && (
+              <div style={{
+                color: '#28a745',
+                marginBottom: '1rem',
+                padding: '0.5rem',
+                backgroundColor: '#d4edda',
+                borderRadius: '4px'
+              }}>
+                {successMessage}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={resetPasswordLoading}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                backgroundColor: '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: resetPasswordLoading ? 'not-allowed' : 'pointer',
+                opacity: resetPasswordLoading ? 0.6 : 1,
+                marginBottom: '1rem'
+              }}
+            >
+              {resetPasswordLoading ? 'Restableciendo...' : 'Restablecer Contraseña'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/login')}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                backgroundColor: 'transparent',
+                color: '#6c757d',
+                border: '1px solid #6c757d',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Volver al login
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Si está en modo "olvidé mi contraseña"
+  if (showForgotPassword) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh',
+        backgroundColor: '#f5f5f5'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          padding: '2rem',
+          borderRadius: '8px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+          width: '100%',
+          maxWidth: '400px'
+        }}>
+          <h1 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+            🔐 Recuperar Contraseña
+          </h1>
+          <p style={{ marginBottom: '1.5rem', color: '#666', textAlign: 'center' }}>
+            Ingresa tu Business ID y teléfono. Te enviaremos un código de recuperación por WhatsApp.
+          </p>
+          
+          <form onSubmit={handleForgotPassword}>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem' }}>
+                Business ID
+              </label>
+              <input
+                type="text"
+                value={businessId}
+                onChange={(e) => setBusinessId(e.target.value)}
+                required
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem' }}>
+                Teléfono
+              </label>
+              <input
+                type="text"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+                placeholder="+5491123456789"
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px'
+                }}
+              />
+            </div>
+
+            {error && (
+              <div style={{
+                color: 'red',
+                marginBottom: '1rem',
+                padding: '0.5rem',
+                backgroundColor: '#fee',
+                borderRadius: '4px'
+              }}>
+                {error}
+              </div>
+            )}
+
+            {successMessage && (
+              <div style={{
+                color: '#28a745',
+                marginBottom: '1rem',
+                padding: '0.5rem',
+                backgroundColor: '#d4edda',
+                borderRadius: '4px'
+              }}>
+                {successMessage}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={forgotPasswordLoading}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: forgotPasswordLoading ? 'not-allowed' : 'pointer',
+                opacity: forgotPasswordLoading ? 0.6 : 1,
+                marginBottom: '1rem'
+              }}
+            >
+              {forgotPasswordLoading ? 'Enviando...' : 'Enviar Código'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowForgotPassword(false)}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                backgroundColor: 'transparent',
+                color: '#6c757d',
+                border: '1px solid #6c757d',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Volver al login
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ 
@@ -199,11 +531,31 @@ export function Login() {
               border: 'none',
               borderRadius: '4px',
               cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.6 : 1
+              opacity: loading ? 0.6 : 1,
+              marginBottom: '0.5rem'
             }}
           >
             {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
           </button>
+
+          {!isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setShowForgotPassword(true)}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                backgroundColor: 'transparent',
+                color: '#6c757d',
+                border: 'none',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                fontSize: '0.875rem'
+              }}
+            >
+              ¿Olvidaste tu contraseña?
+            </button>
+          )}
         </form>
       </div>
     </div>

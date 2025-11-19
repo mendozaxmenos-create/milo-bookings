@@ -108,6 +108,36 @@ export const register = async (data: LoginRequest & { role?: string }): Promise<
   return response.data;
 };
 
+export interface ForgotPasswordRequest {
+  business_id: string;
+  phone: string;
+}
+
+export interface ForgotPasswordResponse {
+  message: string;
+  success: boolean;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  password: string;
+}
+
+export interface ResetPasswordResponse {
+  message: string;
+  success: boolean;
+}
+
+export const forgotPassword = async (data: ForgotPasswordRequest): Promise<ForgotPasswordResponse> => {
+  const response = await api.post<ForgotPasswordResponse>('/api/auth/forgot-password', data);
+  return response.data;
+};
+
+export const resetPassword = async (data: ResetPasswordRequest): Promise<ResetPasswordResponse> => {
+  const response = await api.post<ResetPasswordResponse>('/api/auth/reset-password', data);
+  return response.data;
+};
+
 export default api;
 
 export interface PaymentConfigResponse {
