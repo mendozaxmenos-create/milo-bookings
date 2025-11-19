@@ -84,18 +84,32 @@ async function sendReminder(booking, settings) {
       return;
     }
 
-    // Formatear mensaje de recordatorio
-    const reminderMessage = settings.reminder_message || 
+    // Formatear mensaje de recordatorio con variables
+    let reminderMessage = settings.reminder_message || 
       `⏰ *Recordatorio de Reserva*
 
-Hola ${booking.customer_name || 'cliente'}!
+Hola {nombre}!
 
 Te recordamos que tienes una reserva:
-📅 *Fecha:* ${new Date(booking.booking_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-🕐 *Hora:* ${booking.booking_time}
-📋 *Servicio:* ${booking.service_name}
+📅 *Fecha:* {fecha}
+🕐 *Hora:* {hora}
+📋 *Servicio:* {servicio}
 
 ¡Te esperamos!`;
+
+    // Reemplazar variables en el mensaje
+    const formattedDate = new Date(booking.booking_date).toLocaleDateString('es-ES', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    
+    reminderMessage = reminderMessage
+      .replace(/{nombre}/g, booking.customer_name || 'cliente')
+      .replace(/{fecha}/g, formattedDate)
+      .replace(/{hora}/g, booking.booking_time)
+      .replace(/{servicio}/g, booking.service_name);
 
     // Formatear número de teléfono para WhatsApp
     let customerPhone = booking.customer_phone.replace(/[\s\+]/g, '');

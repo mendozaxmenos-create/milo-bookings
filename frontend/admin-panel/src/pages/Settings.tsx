@@ -54,7 +54,7 @@ const FORM_FIELDS: Array<{
   {
     key: 'reminder_message',
     label: 'Mensaje de recordatorio',
-    helper: 'Recordatorio automático previo a la cita (cuando esté habilitado).',
+    helper: 'Mensaje que se enviará automáticamente a los clientes antes de su cita. Puedes usar variables como {nombre}, {fecha}, {hora}, {servicio}.',
   },
 ];
 
