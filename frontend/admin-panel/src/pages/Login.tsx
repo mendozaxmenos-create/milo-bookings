@@ -17,7 +17,7 @@ export function Login() {
   
   // Estados para recuperación de contraseña
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [showResetPassword, setShowResetPassword] = useState(!!resetToken);
+  const showResetPassword = !!resetToken; // Determinar si mostrar reset basado en token en URL
   const [resetTokenInput, setResetTokenInput] = useState(resetToken || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

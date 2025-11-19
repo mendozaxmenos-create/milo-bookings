@@ -242,9 +242,9 @@ export function Settings() {
       reminders_enabled: remindersEnabled,
       reminder_hours_before: reminderHoursBefore,
       owner_notifications_enabled: ownerNotificationsEnabled,
-      owner_notification_message: ownerNotificationMessage || null,
-      notification_phones: notificationPhones.length > 0 ? notificationPhones : null,
-      default_notification_phone: defaultNotificationPhone || null,
+      owner_notification_message: ownerNotificationMessage || undefined,
+      notification_phones: notificationPhones.length > 0 ? notificationPhones : undefined,
+      default_notification_phone: defaultNotificationPhone || undefined,
     });
   };
 
