@@ -26,7 +26,7 @@ export function Services() {
     requires_payment: true,
   });
 
-  const { data: services, isLoading, error } = useQuery<{ data: Service[] }>({
+  const { data: services, isLoading } = useQuery<{ data: Service[] }>({
     queryKey: ['services'],
     queryFn: async () => {
       const response = await api.get('/api/services');
