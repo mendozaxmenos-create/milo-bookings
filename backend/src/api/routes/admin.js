@@ -275,26 +275,42 @@ router.post('/businesses/:id/activate', async (req, res) => {
  */
 router.get('/businesses/:id/qr', async (req, res) => {
   try {
-    const qrData = getQRCode(req.params.id);
-    const bot = activeBots.get(req.params.id);
+    const businessId = req.params.id;
+    const qrData = getQRCode(businessId);
+    const bot = activeBots.get(businessId);
+    
+    console.log(`[QR] Solicitud de QR para negocio ${businessId}`);
+    console.log(`[QR] QR data disponible: ${!!qrData}`);
+    console.log(`[QR] Bot activo: ${!!bot}`);
     
     if (!qrData) {
-      if (bot && bot.client?.info) {
-        return res.json({
-          data: {
-            qr: null,
-            status: 'authenticated',
-            message: 'Bot ya está conectado a WhatsApp',
-          },
-        });
+      // Verificar si el bot está autenticado
+      if (bot) {
+        try {
+          const clientInfo = bot.client?.info;
+          if (clientInfo) {
+            console.log(`[QR] Bot ${businessId} ya está autenticado`);
+            return res.json({
+              data: {
+                qr: null,
+                status: 'authenticated',
+                message: 'Bot ya está conectado a WhatsApp',
+              },
+            });
+          }
+        } catch (err) {
+          console.log(`[QR] Error verificando estado del bot: ${err.message}`);
+        }
       }
       
+      console.log(`[QR] No hay QR disponible para negocio ${businessId}`);
       return res.status(404).json({
         error: 'QR code no disponible',
-        message: 'El QR code no está disponible. El bot puede estar ya autenticado o no estar inicializado.',
+        message: 'El QR code no está disponible. El bot puede estar ya autenticado o no estar inicializado. Intenta hacer clic en "Reconectar Bot" para generar un nuevo QR.',
       });
     }
     
+    console.log(`[QR] QR encontrado para negocio ${businessId}`);
     res.json({
       data: {
         qr: qrData.qr,
