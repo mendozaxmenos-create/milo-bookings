@@ -79,9 +79,9 @@ app.post('/api/run-seeds', async (req, res) => {
   console.log('[SeedEndpoint] POST /api/run-seeds');
   try {
     const knex = (await import('knex')).default;
-    const config = (await import('../knexfile.js')).default;
-    const { seed: seedDemo } = await import('../database/seeds/001_demo_data.js');
-    const { seed: seedSystemUsers } = await import('../database/seeds/003_system_users.js');
+    const config = (await import('../../knexfile.js')).default;
+    const { seed: seedDemo } = await import('../../database/seeds/001_demo_data.js');
+    const { seed: seedSystemUsers } = await import('../../database/seeds/003_system_users.js');
     
     const environment = process.env.NODE_ENV || 'production';
     const db = knex(config[environment]);
@@ -112,6 +112,58 @@ app.post('/api/run-seeds', async (req, res) => {
       error: 'Error ejecutando seeds',
       message: error.message,
     });
+  }
+});
+
+// Internal status endpoint (protected by token)
+app.get('/internal/status', async (req, res) => {
+  try {
+    if (!process.env.INTERNAL_API_TOKEN) {
+      return res.status(503).json({ error: 'Internal token not configured' });
+    }
+    if (req.query.token !== process.env.INTERNAL_API_TOKEN) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const knex = (await import('knex')).default;
+    const config = (await import('../../knexfile.js')).default;
+    const environment = process.env.NODE_ENV || 'production';
+    const db = knex(config[environment]);
+
+    const [businessesCount] = await db('businesses').count('* as count');
+    const [businessUsersCount] = await db('business_users').count('* as count');
+    const [systemUsersCount] = await db('system_users').count('* as count');
+
+    const latestBusiness = await db('businesses').orderBy('created_at', 'desc').first();
+    const latestBusinessUser = await db('business_users')
+      .select('id', 'business_id', 'phone', 'role', 'created_at')
+      .orderBy('created_at', 'desc')
+      .first();
+    const latestSystemUser = await db('system_users')
+      .select('id', 'email', 'role', 'is_active', 'created_at')
+      .orderBy('created_at', 'desc')
+      .first();
+
+    await db.destroy();
+
+    res.json({
+      data: {
+        counts: {
+          businesses: parseInt(businessesCount?.count || 0, 10),
+          business_users: parseInt(businessUsersCount?.count || 0, 10),
+          system_users: parseInt(systemUsersCount?.count || 0, 10),
+        },
+        latest: {
+          business: latestBusiness,
+          business_user: latestBusinessUser,
+          system_user: latestSystemUser,
+        },
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('[InternalStatus] Error:', error);
+    res.status(500).json({ error: 'Internal status error', message: error.message });
   }
 });
 
