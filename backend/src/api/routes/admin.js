@@ -325,26 +325,19 @@ router.post('/businesses/:id/reconnect-bot', async (req, res) => {
       return res.status(400).json({ error: 'Business does not have a WhatsApp number configured' });
     }
     
-    // Desconectar bot existente
+    // Desconectar bot existente si hay uno
     const existingBot = activeBots.get(req.params.id);
     if (existingBot) {
-      await existingBot.disconnect();
+      try {
+        await existingBot.disconnect();
+      } catch (disconnectErr) {
+        console.warn('Error desconectando bot existente:', disconnectErr);
+      }
       activeBots.delete(req.params.id);
     }
     
     // Reinicializar bot
     try {
-      // Desconectar bot existente si hay uno
-      const existingBot = activeBots.get(req.params.id);
-      if (existingBot) {
-        try {
-          await existingBot.disconnect();
-        } catch (disconnectErr) {
-          console.warn('Error desconectando bot existente:', disconnectErr);
-        }
-        activeBots.delete(req.params.id);
-      }
-      
       // Crear nuevo bot e inicializar
       const bot = new BookingBot(business.id, business.whatsapp_number);
       // Inicializar en segundo plano para no bloquear la respuesta
