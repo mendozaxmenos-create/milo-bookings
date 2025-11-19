@@ -21,11 +21,25 @@ interface Service {
   duration_minutes: number;
 }
 
+interface BookingsResponse {
+  data: Booking[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+}
+
 export function Bookings() {
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState({
     status: '',
     date: '',
+    search: '',
+    page: 1,
   });
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [editFormData, setEditFormData] = useState({
@@ -36,16 +50,23 @@ export function Bookings() {
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
 
-  const { data: bookings, isLoading } = useQuery<{ data: Booking[] }>({
+  const { data: bookingsResponse, isLoading } = useQuery<BookingsResponse>({
     queryKey: ['bookings', filters],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (filters.status) params.append('status', filters.status);
       if (filters.date) params.append('date', filters.date);
+      if (filters.search) params.append('search', filters.search);
+      params.append('page', filters.page.toString());
+      params.append('limit', '20'); // 20 por página
       const response = await api.get(`/bookings?${params.toString()}`);
       return response.data;
     },
   });
+
+  // Compatibilidad con formato anterior (sin paginación)
+  const bookings = bookingsResponse?.data || [];
+  const pagination = bookingsResponse?.pagination;
 
   const { data: services } = useQuery<{ data: Service[] }>({
     queryKey: ['services'],
@@ -153,13 +174,14 @@ export function Bookings() {
   };
 
   const exportToCSV = () => {
-    if (!bookings?.data || bookings.data.length === 0) {
+    const bookingsToExport = bookings || [];
+    if (bookingsToExport.length === 0) {
       alert('No hay reservas para exportar');
       return;
     }
 
     const headers = ['Cliente', 'Teléfono', 'Servicio', 'Fecha', 'Hora', 'Monto', 'Estado', 'Pago'];
-    const rows = bookings.data.map((booking) => [
+    const rows = bookingsToExport.map((booking) => [
       booking.customer_name || 'Sin nombre',
       booking.customer_phone,
       booking.service_name,
@@ -364,13 +386,13 @@ export function Bookings() {
         boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
         marginBottom: '2rem',
       }}>
-        <h3 style={{ marginBottom: '1rem' }}>Filtros</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <h3 style={{ marginBottom: '1rem' }}>Filtros y Búsqueda</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '1rem', marginBottom: '1rem' }}>
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem' }}>Estado</label>
             <select
               value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value, page: 1 })}
               style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
             >
               <option value="">Todos</option>
@@ -386,7 +408,17 @@ export function Bookings() {
             <input
               type="date"
               value={filters.date}
-              onChange={(e) => setFilters({ ...filters, date: e.target.value })}
+              onChange={(e) => setFilters({ ...filters, date: e.target.value, page: 1 })}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Buscar (nombre o teléfono)</label>
+            <input
+              type="text"
+              value={filters.search}
+              onChange={(e) => setFilters({ ...filters, search: e.target.value, page: 1 })}
+              placeholder="Buscar por nombre o teléfono..."
               style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
             />
           </div>
@@ -413,7 +445,8 @@ export function Bookings() {
             </tr>
           </thead>
           <tbody>
-            {bookings?.data?.map((booking) => {
+            {bookings && bookings.length > 0 ? (
+              bookings.map((booking) => {
               const statusStyle = getStatusColor(booking.status);
               const paymentStyle = getPaymentStatusColor(booking.payment_status);
               
@@ -521,10 +554,69 @@ export function Bookings() {
                   </td>
                 </tr>
               );
-            })}
+            }))
+            : (
+              <tr>
+                <td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: '#6c757d' }}>
+                  No hay reservas registradas.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
-        {bookings?.data?.length === 0 && (
+        
+        {/* Paginación */}
+        {pagination && pagination.totalPages > 1 && (
+          <div style={{
+            padding: '1.5rem',
+            borderTop: '1px solid #dee2e6',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#f8f9fa',
+          }}>
+            <div style={{ color: '#6c757d', fontSize: '0.875rem' }}>
+              Mostrando {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} de {pagination.total} reservas
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <button
+                onClick={() => setFilters({ ...filters, page: pagination.page - 1 })}
+                disabled={!pagination.hasPrevPage}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: pagination.hasPrevPage ? '#007bff' : '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: pagination.hasPrevPage ? 'pointer' : 'not-allowed',
+                  opacity: pagination.hasPrevPage ? 1 : 0.6,
+                }}
+              >
+                ← Anterior
+              </button>
+              <span style={{ padding: '0 1rem', color: '#6c757d' }}>
+                Página {pagination.page} de {pagination.totalPages}
+              </span>
+              <button
+                onClick={() => setFilters({ ...filters, page: pagination.page + 1 })}
+                disabled={!pagination.hasNextPage}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: pagination.hasNextPage ? '#007bff' : '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: pagination.hasNextPage ? 'pointer' : 'not-allowed',
+                  opacity: pagination.hasNextPage ? 1 : 0.6,
+                }}
+              >
+                Siguiente →
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {(!pagination && bookings?.length === 0) && (
           <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
             No hay reservas registradas.
           </div>

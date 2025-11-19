@@ -21,31 +21,46 @@ router.get('/', async (req, res) => {
       status: req.query.status,
       date: req.query.date,
       customer_phone: req.query.customer_phone,
-      limit: parseInt(req.query.limit) || 100,
-      offset: parseInt(req.query.offset) || 0,
+      search: req.query.search, // Búsqueda general
+      page: parseInt(req.query.page) || 1,
+      limit: parseInt(req.query.limit) || 20,
     };
 
     console.log('[API] GET /bookings - Filters:', filters);
 
-    const bookings = await Booking.findByBusiness(req.user.business_id, filters);
+    const result = await Booking.findByBusiness(req.user.business_id, filters);
     
-    console.log('[API] GET /bookings - Found bookings:', {
-      count: bookings?.length || 0,
-      business_id: req.user.business_id,
-      statuses: bookings?.map(b => b.status) || [],
-    });
-    
-    if (bookings && bookings.length > 0) {
-      console.log('[API] GET /bookings - Sample booking:', {
-        id: bookings[0].id,
-        customer_name: bookings[0].customer_name,
-        customer_phone: bookings[0].customer_phone,
-        status: bookings[0].status,
-        booking_date: bookings[0].booking_date,
+    // Si el resultado tiene paginación (estructura nueva)
+    if (result && result.pagination) {
+      console.log('[API] GET /bookings - Found bookings with pagination:', {
+        count: result.data?.length || 0,
+        total: result.pagination.total,
+        page: result.pagination.page,
+        totalPages: result.pagination.totalPages,
+        business_id: req.user.business_id,
       });
+      
+      if (result.data && result.data.length > 0) {
+        console.log('[API] GET /bookings - Sample booking:', {
+          id: result.data[0].id,
+          customer_name: result.data[0].customer_name,
+          customer_phone: result.data[0].customer_phone,
+          status: result.data[0].status,
+          booking_date: result.data[0].booking_date,
+        });
+      }
+      
+      return res.json(result);
     }
     
-    res.json({ data: bookings });
+    // Compatibilidad con formato anterior (sin paginación)
+    console.log('[API] GET /bookings - Found bookings (legacy):', {
+      count: result?.length || 0,
+      business_id: req.user.business_id,
+      statuses: result?.map(b => b.status) || [],
+    });
+    
+    res.json({ data: result });
   } catch (error) {
     console.error('[API] Error listing bookings:', error);
     res.status(500).json({ error: 'Internal server error' });
