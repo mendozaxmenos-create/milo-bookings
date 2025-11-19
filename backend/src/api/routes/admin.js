@@ -22,47 +22,66 @@ router.get('/businesses', async (req, res) => {
   try {
     console.log('[Admin] Listando todos los negocios (incluyendo inactivos)');
     const businesses = await Business.list(1000, 0, true); // Incluir inactivos para super admin
-    console.log(`[Admin] Encontrados ${businesses.length} negocios en la base de datos`);
+    console.log(`[Admin] ✅ Encontrados ${businesses.length} negocios en la base de datos`);
     
     if (businesses.length === 0) {
       console.warn('[Admin] ⚠️ No se encontraron negocios en la base de datos');
-    } else {
-      console.log('[Admin] Negocios encontrados:', businesses.map(b => ({ id: b.id, name: b.name, is_active: b.is_active })));
+      // Retornar array vacío explícitamente
+      return res.json({ data: [] });
     }
+    
+    console.log('[Admin] Negocios encontrados:', businesses.map(b => ({ 
+      id: b.id, 
+      name: b.name, 
+      is_active: b.is_active,
+      whatsapp_number: b.whatsapp_number 
+    })));
     
     // Agregar información de estado del bot para cada negocio
     const businessesWithStatus = await Promise.all(
       businesses.map(async (business) => {
-        const bot = activeBots.get(business.id);
-        const qrData = getQRCode(business.id);
-        
-        let botStatus = 'not_initialized';
-        if (bot) {
-          try {
-            const clientInfo = bot.client?.info;
-            if (clientInfo) {
-              botStatus = 'authenticated';
-            } else if (qrData) {
-              botStatus = 'waiting_qr';
-            } else {
-              botStatus = 'initializing';
+        try {
+          const bot = activeBots.get(business.id);
+          const qrData = getQRCode(business.id);
+          
+          let botStatus = 'not_initialized';
+          if (bot) {
+            try {
+              const clientInfo = bot.client?.info;
+              if (clientInfo) {
+                botStatus = 'authenticated';
+              } else if (qrData) {
+                botStatus = 'waiting_qr';
+              } else {
+                botStatus = 'initializing';
+              }
+            } catch (err) {
+              console.warn(`[Admin] Error verificando estado del bot ${business.id}:`, err.message);
+              botStatus = 'error';
             }
-          } catch {
-            botStatus = 'error';
+          } else if (qrData) {
+            botStatus = 'waiting_qr';
           }
-        } else if (qrData) {
-          botStatus = 'waiting_qr';
+          
+          return {
+            ...business,
+            bot_status: botStatus,
+            has_qr: !!qrData,
+          };
+        } catch (error) {
+          console.error(`[Admin] Error procesando negocio ${business.id}:`, error);
+          // Retornar negocio sin estado de bot si hay error
+          return {
+            ...business,
+            bot_status: 'error',
+            has_qr: false,
+          };
         }
-        
-        return {
-          ...business,
-          bot_status: botStatus,
-          has_qr: !!qrData,
-        };
       })
     );
     
     console.log(`[Admin] ✅ Retornando ${businessesWithStatus.length} negocios con estado de bot`);
+    console.log(`[Admin] IDs de negocios retornados:`, businessesWithStatus.map(b => b.id));
     res.json({ data: businessesWithStatus });
   } catch (error) {
     console.error('[Admin] ❌ Error listing businesses:', error);
