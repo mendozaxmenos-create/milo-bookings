@@ -57,11 +57,12 @@ export function AdminBusinesses() {
     mutationFn: reconnectBusinessBot,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
+      // Esperar más tiempo para que el bot se inicialice y genere el QR
       setTimeout(() => {
         if (selectedBusiness) {
           loadQRCode(selectedBusiness.id);
         }
-      }, 2000);
+      }, 5000); // 5 segundos para dar tiempo a que el bot genere el QR
     },
   });
 
@@ -83,12 +84,19 @@ export function AdminBusinesses() {
       const response = await getBusinessQR(businessId);
       if (response.data.qr) {
         setQrCode(response.data.qr);
+      } else if (response.data.status === 'authenticated') {
+        // Bot ya está autenticado
+        setQrCode('AUTHENTICATED');
       } else {
         setQrCode(null);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading QR:', error);
       setQrCode(null);
+      // Si el error es 404, significa que no hay QR disponible
+      if (error?.response?.status === 404) {
+        console.warn('QR no disponible. El bot puede necesitar ser reconectado.');
+      }
     }
   };
 
@@ -548,32 +556,70 @@ function QRModal({
         }}
       >
         <h2 style={{ marginTop: 0 }}>QR Code - {business.name}</h2>
-        {qrCode ? (
+        {qrCode === 'AUTHENTICATED' ? (
+          <div>
+            <div style={{ 
+              padding: '1rem', 
+              backgroundColor: '#d4edda', 
+              borderRadius: '4px', 
+              marginBottom: '1rem',
+              color: '#155724',
+            }}>
+              ✅ El bot ya está conectado a WhatsApp y autenticado.
+            </div>
+            <p style={{ color: '#6c757d', fontSize: '0.875rem' }}>
+              No se necesita escanear QR. El bot está funcionando correctamente.
+            </p>
+          </div>
+        ) : qrCode ? (
           <>
             <div style={{ margin: '1rem 0' }}>
               <QRCode value={qrCode} size={256} />
             </div>
-            <p style={{ color: '#6c757d', fontSize: '0.875rem' }}>
+            <p style={{ color: '#6c757d', fontSize: '0.875rem', marginBottom: '1rem' }}>
               Escanea este código con WhatsApp para conectar el bot
+            </p>
+            <p style={{ color: '#856404', fontSize: '0.75rem', backgroundColor: '#fff3cd', padding: '0.5rem', borderRadius: '4px' }}>
+              ⚠️ El QR expira en 5 minutos. Si expira, haz clic en "Reconectar Bot" para generar uno nuevo.
             </p>
           </>
         ) : (
           <div>
-            <p>El bot ya está conectado o no hay QR disponible.</p>
-            <button
-              onClick={onRefresh}
-              style={{
-                marginTop: '1rem',
-                padding: '0.5rem 1rem',
-                backgroundColor: '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-              }}
-            >
-              Refrescar
-            </button>
+            <div style={{ 
+              padding: '1rem', 
+              backgroundColor: '#fff3cd', 
+              borderRadius: '4px', 
+              marginBottom: '1rem',
+              color: '#856404',
+            }}>
+              ⚠️ No hay QR disponible en este momento.
+            </div>
+            <p style={{ color: '#6c757d', fontSize: '0.875rem', marginBottom: '1rem' }}>
+              Esto puede suceder si:
+            </p>
+            <ul style={{ textAlign: 'left', color: '#6c757d', fontSize: '0.875rem', marginBottom: '1rem' }}>
+              <li>El bot ya está conectado a WhatsApp</li>
+              <li>El QR expiró (válido por 5 minutos)</li>
+              <li>El bot aún no se ha inicializado</li>
+            </ul>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={onRefresh}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}
+              >
+                🔄 Refrescar
+              </button>
+              <p style={{ color: '#6c757d', fontSize: '0.75rem', width: '100%', marginTop: '0.5rem' }}>
+                O haz clic en "Reconectar Bot" en la lista para generar un nuevo QR.
+              </p>
+            </div>
           </div>
         )}
         <button
