@@ -550,6 +550,34 @@ function QRModal({
   onClose: () => void;
   onRefresh: () => void;
 }) {
+  const [isPolling, setIsPolling] = useState(false);
+  
+  useEffect(() => {
+    // Si no hay QR, iniciar polling automático
+    if (!qrCode && !isPolling) {
+      setIsPolling(true);
+      let attempts = 0;
+      const maxAttempts = 15; // Intentar 15 veces (30 segundos)
+      
+      const interval = setInterval(async () => {
+        attempts++;
+        onRefresh(); // Llamar a onRefresh para intentar cargar el QR
+        
+        // Si encontramos QR o alcanzamos el máximo de intentos, parar
+        if (qrCode || attempts >= maxAttempts) {
+          clearInterval(interval);
+          setIsPolling(false);
+        }
+      }, 2000); // Intentar cada 2 segundos
+      
+      // Limpiar cuando el componente se desmonte
+      return () => {
+        clearInterval(interval);
+        setIsPolling(false);
+      };
+    }
+  }, [qrCode, isPolling, onRefresh]);
+  
   return (
     <div
       style={{
@@ -624,19 +652,22 @@ function QRModal({
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
                 onClick={onRefresh}
+                disabled={isPolling}
                 style={{
                   padding: '0.5rem 1rem',
-                  backgroundColor: '#007bff',
+                  backgroundColor: isPolling ? '#6c757d' : '#007bff',
                   color: 'white',
                   border: 'none',
                   borderRadius: '4px',
-                  cursor: 'pointer',
+                  cursor: isPolling ? 'not-allowed' : 'pointer',
                 }}
               >
-                🔄 Refrescar
+                🔄 {isPolling ? 'Buscando...' : 'Refrescar'}
               </button>
               <p style={{ color: '#6c757d', fontSize: '0.75rem', width: '100%', marginTop: '0.5rem' }}>
-                O haz clic en "Reconectar Bot" en la lista para generar un nuevo QR.
+                {isPolling 
+                  ? 'El sistema está buscando el QR automáticamente. Si el bot está inicializándose, aparecerá en unos segundos.'
+                  : 'O haz clic en "Reconectar Bot" en la lista para generar un nuevo QR.'}
               </p>
             </div>
           </div>
