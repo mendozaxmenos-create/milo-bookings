@@ -191,13 +191,48 @@ app.get('/internal/status', async (req, res) => {
   }
 });
 
-// Rate limiting para el resto de rutas API
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  skip: (req) => req.path === '/api/run-seeds',
+// Rate limiting específico para endpoints sensibles
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5, // 5 intentos por IP por ventana de tiempo
+  message: { error: 'Demasiados intentos. Por favor intenta de nuevo en 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Permitir más intentos para password reset en desarrollo
+    if (process.env.NODE_ENV !== 'production' && req.path.includes('/forgot-password')) {
+      return true;
+    }
+    return false;
+  },
 });
 
+// Rate limiting para password reset (más estricto)
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hora
+  max: 3, // Solo 3 intentos por hora
+  message: { error: 'Demasiados intentos de recuperación de contraseña. Por favor intenta de nuevo en 1 hora.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiting general para API
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 200, // 200 requests por IP por ventana de tiempo
+  message: { error: 'Demasiadas solicitudes. Por favor intenta de nuevo más tarde.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Saltar rate limiting para endpoints especiales
+    if (req.path === '/api/run-seeds') return true;
+    // Saltar para health checks
+    if (req.path === '/health' || req.path === '/') return true;
+    return false;
+  },
+});
+
+// Aplicar rate limiting general a todas las rutas API
 app.use('/api/', apiLimiter);
 
 // API Routes

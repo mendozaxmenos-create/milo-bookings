@@ -1,4 +1,5 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { BusinessUser } from '../../../database/models/BusinessUser.js';
 import { SystemUser } from '../../../database/models/SystemUser.js';
 import { generateToken } from '../../utils/auth.js';
@@ -7,8 +8,36 @@ import { sendPasswordResetToken, sendSystemUserPasswordResetToken, resetPassword
 
 const router = express.Router();
 
-// Login
-router.post('/login', async (req, res, next) => {
+// Rate limiting para login (más estricto)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5, // 5 intentos por IP
+  message: { error: 'Demasiados intentos de login. Por favor intenta de nuevo en 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // No contar requests exitosos
+});
+
+// Rate limiting para password reset (muy estricto)
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hora
+  max: 3, // Solo 3 intentos por hora por IP
+  message: { error: 'Demasiados intentos de recuperación de contraseña. Por favor intenta de nuevo en 1 hora.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiting para registro
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hora
+  max: 3, // Solo 3 registros por hora por IP
+  message: { error: 'Demasiados intentos de registro. Por favor intenta de nuevo en 1 hora.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Login (con rate limiting)
+router.post('/login', loginLimiter, async (req, res, next) => {
   try {
     console.log('[Auth] Login attempt:', {
       hasEmail: !!req.body.email,
@@ -107,7 +136,7 @@ router.post('/login', async (req, res, next) => {
 });
 
 // Register (solo para desarrollo, en producción debería ser por invitación)
-router.post('/register', async (req, res) => {
+router.post('/register', registerLimiter, async (req, res) => {
   try {
     const { error, value } = validateRegister(req.body);
     if (error) {
@@ -151,8 +180,8 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Solicitar recuperación de contraseña
-router.post('/forgot-password', async (req, res) => {
+// Solicitar recuperación de contraseña (con rate limiting estricto)
+router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
   try {
     const { error, value } = validatePasswordResetRequest(req.body);
     if (error) {
