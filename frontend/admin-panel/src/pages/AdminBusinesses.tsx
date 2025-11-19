@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getBusinesses,
@@ -551,32 +551,51 @@ function QRModal({
   onRefresh: () => void;
 }) {
   const [isPolling, setIsPolling] = useState(false);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const attemptsRef = useRef(0);
   
   useEffect(() => {
     // Si no hay QR, iniciar polling automático
     if (!qrCode && !isPolling) {
       setIsPolling(true);
-      let attempts = 0;
+      attemptsRef.current = 0;
       const maxAttempts = 15; // Intentar 15 veces (30 segundos)
       
-      const interval = setInterval(async () => {
-        attempts++;
-        onRefresh(); // Llamar a onRefresh para intentar cargar el QR
+      pollingRef.current = setInterval(async () => {
+        attemptsRef.current++;
+        await onRefresh(); // Llamar a onRefresh para intentar cargar el QR
         
-        // Si encontramos QR o alcanzamos el máximo de intentos, parar
-        if (qrCode || attempts >= maxAttempts) {
-          clearInterval(interval);
+        // Si alcanzamos el máximo de intentos, parar
+        if (attemptsRef.current >= maxAttempts) {
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
           setIsPolling(false);
         }
       }, 2000); // Intentar cada 2 segundos
-      
-      // Limpiar cuando el componente se desmonte
-      return () => {
-        clearInterval(interval);
-        setIsPolling(false);
-      };
     }
-  }, [qrCode, isPolling, onRefresh]);
+    
+    // Limpiar cuando el componente se desmonte
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+      setIsPolling(false);
+      attemptsRef.current = 0;
+    };
+  }, []); // Solo ejecutar una vez al montar
+  
+  // Detener polling si encontramos QR
+  useEffect(() => {
+    if (qrCode && isPolling && pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+      setIsPolling(false);
+      attemptsRef.current = 0;
+    }
+  }, [qrCode, isPolling]);
   
   return (
     <div

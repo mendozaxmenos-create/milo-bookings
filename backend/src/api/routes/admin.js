@@ -20,7 +20,9 @@ router.use(requireSuperAdmin);
  */
 router.get('/businesses', async (req, res) => {
   try {
+    console.log('[Admin] Listando todos los negocios (incluyendo inactivos)');
     const businesses = await Business.list(1000, 0, true); // Incluir inactivos para super admin
+    console.log(`[Admin] Encontrados ${businesses.length} negocios`);
     
     // Agregar información de estado del bot para cada negocio
     const businessesWithStatus = await Promise.all(
