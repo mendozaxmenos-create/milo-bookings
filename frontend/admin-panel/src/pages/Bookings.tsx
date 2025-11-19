@@ -4,6 +4,7 @@ import api from '../services/api';
 
 interface Booking {
   id: string;
+  service_id: string;
   service_name: string;
   customer_phone: string;
   customer_name?: string;
@@ -14,12 +15,26 @@ interface Booking {
   amount: number;
 }
 
+interface Service {
+  id: string;
+  name: string;
+  duration_minutes: number;
+}
+
 export function Bookings() {
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState({
     status: '',
     date: '',
   });
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    service_id: '',
+    booking_date: '',
+    booking_time: '',
+  });
+  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
+  const [loadingTimes, setLoadingTimes] = useState(false);
 
   const { data: bookings, isLoading } = useQuery<{ data: Booking[] }>({
     queryKey: ['bookings', filters],
@@ -28,6 +43,14 @@ export function Bookings() {
       if (filters.status) params.append('status', filters.status);
       if (filters.date) params.append('date', filters.date);
       const response = await api.get(`/bookings?${params.toString()}`);
+      return response.data;
+    },
+  });
+
+  const { data: services } = useQuery<{ data: Service[] }>({
+    queryKey: ['services'],
+    queryFn: async () => {
+      const response = await api.get('/api/services');
       return response.data;
     },
   });
@@ -50,6 +73,118 @@ export function Bookings() {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
     },
   });
+
+  const updateBookingMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Booking> }) => {
+      const response = await api.put(`/bookings/${id}`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      setEditingBooking(null);
+      setEditFormData({ service_id: '', booking_date: '', booking_time: '' });
+      setAvailableTimes([]);
+    },
+  });
+
+  const fetchAvailableTimes = async (date: string, serviceId: string) => {
+    if (!date || !serviceId) {
+      setAvailableTimes([]);
+      return;
+    }
+
+    setLoadingTimes(true);
+    try {
+      const service = services?.data?.find((s) => s.id === serviceId);
+      const serviceDuration = service?.duration_minutes || 30;
+      
+      const response = await api.get(
+        `/api/availability/available-times?date=${date}&service_duration=${serviceDuration}`
+      );
+      setAvailableTimes(response.data.data || []);
+    } catch (error) {
+      console.error('Error fetching available times:', error);
+      setAvailableTimes([]);
+    } finally {
+      setLoadingTimes(false);
+    }
+  };
+
+  const handleEdit = (booking: Booking) => {
+    setEditingBooking(booking);
+    setEditFormData({
+      service_id: booking.service_id,
+      booking_date: booking.booking_date,
+      booking_time: booking.booking_time.substring(0, 5),
+    });
+    fetchAvailableTimes(booking.booking_date, booking.service_id);
+  };
+
+  const handleDateChange = (date: string) => {
+    setEditFormData({ ...editFormData, booking_date: date, booking_time: '' });
+    if (date && editFormData.service_id) {
+      fetchAvailableTimes(date, editFormData.service_id);
+    }
+  };
+
+  const handleServiceChange = (serviceId: string) => {
+    setEditFormData({ ...editFormData, service_id: serviceId, booking_time: '' });
+    if (editFormData.booking_date && serviceId) {
+      fetchAvailableTimes(editFormData.booking_date, serviceId);
+    }
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingBooking) return;
+    
+    if (!editFormData.service_id || !editFormData.booking_date || !editFormData.booking_time) {
+      alert('Por favor completa todos los campos');
+      return;
+    }
+
+    updateBookingMutation.mutate({
+      id: editingBooking.id,
+      data: {
+        service_id: editFormData.service_id,
+        booking_date: editFormData.booking_date,
+        booking_time: editFormData.booking_time + ':00',
+      },
+    });
+  };
+
+  const exportToCSV = () => {
+    if (!bookings?.data || bookings.data.length === 0) {
+      alert('No hay reservas para exportar');
+      return;
+    }
+
+    const headers = ['Cliente', 'Teléfono', 'Servicio', 'Fecha', 'Hora', 'Monto', 'Estado', 'Pago'];
+    const rows = bookings.data.map((booking) => [
+      booking.customer_name || 'Sin nombre',
+      booking.customer_phone,
+      booking.service_name,
+      new Date(booking.booking_date).toLocaleDateString('es-ES'),
+      booking.booking_time.substring(0, 5),
+      `$${Number(booking.amount || 0).toFixed(2)}`,
+      booking.status,
+      booking.payment_status,
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `reservas_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -88,7 +223,139 @@ export function Bookings() {
     <div style={{ padding: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1>Gestión de Reservas</h1>
+        <button
+          onClick={exportToCSV}
+          style={{
+            padding: '0.5rem 1rem',
+            backgroundColor: '#28a745',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '0.875rem',
+          }}
+        >
+          📥 Exportar a CSV
+        </button>
       </div>
+
+      {/* Edit Modal */}
+      {editingBooking && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '2rem',
+            borderRadius: '8px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            maxWidth: '500px',
+            width: '90%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+          }}>
+            <h2 style={{ marginBottom: '1.5rem' }}>Editar Reserva</h2>
+            
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem' }}>Servicio *</label>
+              <select
+                value={editFormData.service_id}
+                onChange={(e) => handleServiceChange(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                required
+              >
+                <option value="">Seleccionar servicio</option>
+                {services?.data?.map((service) => (
+                  <option key={service.id} value={service.id}>
+                    {service.name} ({service.duration_minutes} min)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem' }}>Fecha *</label>
+              <input
+                type="date"
+                value={editFormData.booking_date}
+                onChange={(e) => handleDateChange(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                required
+              />
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem' }}>Hora *</label>
+              {loadingTimes ? (
+                <div style={{ padding: '0.5rem', color: '#666' }}>Cargando horarios disponibles...</div>
+              ) : availableTimes.length > 0 ? (
+                <select
+                  value={editFormData.booking_time}
+                  onChange={(e) => setEditFormData({ ...editFormData, booking_time: e.target.value })}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                  required
+                >
+                  <option value="">Seleccionar hora</option>
+                  {availableTimes.map((time) => (
+                    <option key={time} value={time.substring(0, 5)}>
+                      {time.substring(0, 5)}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div style={{ padding: '0.5rem', color: '#dc3545' }}>
+                  No hay horarios disponibles para esta fecha y servicio
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setEditingBooking(null);
+                  setEditFormData({ service_id: '', booking_date: '', booking_time: '' });
+                  setAvailableTimes([]);
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={updateBookingMutation.isPending || !editFormData.service_id || !editFormData.booking_date || !editFormData.booking_time}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  opacity: updateBookingMutation.isPending || !editFormData.service_id || !editFormData.booking_date || !editFormData.booking_time ? 0.6 : 1,
+                }}
+              >
+                {updateBookingMutation.isPending ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{
         backgroundColor: 'white',
@@ -195,11 +462,29 @@ export function Bookings() {
                     </span>
                   </td>
                   <td style={{ padding: '1rem', textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                      <button
+                        onClick={() => handleEdit(booking)}
+                        style={{
+                          padding: '0.25rem 0.5rem',
+                          backgroundColor: '#ffc107',
+                          color: 'black',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                        }}
+                      >
+                        Editar
+                      </button>
                       {booking.status !== 'cancelled' && booking.status !== 'completed' && (
                         <select
                           value={booking.status}
-                          onChange={(e) => updateStatusMutation.mutate({ id: booking.id, status: e.target.value })}
+                          onChange={(e) => {
+                            if (window.confirm(`¿Cambiar el estado a "${e.target.value}"?`)) {
+                              updateStatusMutation.mutate({ id: booking.id, status: e.target.value });
+                            }
+                          }}
                           style={{
                             padding: '0.25rem 0.5rem',
                             border: '1px solid #ddd',
@@ -207,16 +492,16 @@ export function Bookings() {
                             fontSize: '0.875rem',
                           }}
                         >
-              <option value="pending">Pendiente</option>
-              <option value="pending_payment">Pago Pendiente</option>
-              <option value="confirmed">Confirmar</option>
-              <option value="cancelled">Cancelar</option>
-              <option value="completed">Completar</option>
+                          <option value="pending">Pendiente</option>
+                          <option value="pending_payment">Pago Pendiente</option>
+                          <option value="confirmed">Confirmar</option>
+                          <option value="cancelled">Cancelar</option>
+                          <option value="completed">Completar</option>
                         </select>
                       )}
                       <button
                         onClick={() => {
-                          if (window.confirm('¿Estás seguro de eliminar esta reserva?')) {
+                          if (window.confirm('⚠️ ¿Estás seguro de eliminar esta reserva?\n\nEsta acción no se puede deshacer.')) {
                             deleteMutation.mutate(booking.id);
                           }
                         }}

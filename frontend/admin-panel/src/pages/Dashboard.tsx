@@ -17,6 +17,8 @@ type BookingSummary = {
   booking_date: string;
   booking_time: string;
   status: BookingStatus;
+  payment_status: 'pending' | 'paid' | 'refunded';
+  amount: number;
 };
 
 export function Dashboard() {
@@ -57,6 +59,9 @@ export function Dashboard() {
     },
   });
 
+  const today = new Date().toISOString().split('T')[0];
+  const thisMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+  
   const stats = {
     totalServices: services?.data?.length || 0,
     activeServices: services?.data?.filter((service) => service.is_active).length || 0,
@@ -65,6 +70,20 @@ export function Dashboard() {
       booking.status === 'pending' || booking.status === 'pending_payment'
     ).length || 0,
     confirmedBookings: bookings?.data?.filter((booking) => booking.status === 'confirmed').length || 0,
+    completedBookings: bookings?.data?.filter((booking) => booking.status === 'completed').length || 0,
+    todayBookings: bookings?.data?.filter((booking) => booking.booking_date === today).length || 0,
+    monthBookings: bookings?.data?.filter((booking) => 
+      booking.booking_date.startsWith(thisMonth)
+    ).length || 0,
+    totalRevenue: bookings?.data?.filter((booking) => 
+      booking.payment_status === 'paid'
+    ).reduce((sum, booking) => sum + (Number(booking.amount) || 0), 0) || 0,
+    monthRevenue: bookings?.data?.filter((booking) => 
+      booking.booking_date.startsWith(thisMonth) && booking.payment_status === 'paid'
+    ).reduce((sum, booking) => sum + (Number(booking.amount) || 0), 0) || 0,
+    todayRevenue: bookings?.data?.filter((booking) => 
+      booking.booking_date === today && booking.payment_status === 'paid'
+    ).reduce((sum, booking) => sum + (Number(booking.amount) || 0), 0) || 0,
   };
 
   // Log de estadísticas calculadas
@@ -103,7 +122,7 @@ export function Dashboard() {
       {/* Stats Cards */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
         gap: '1.5rem',
         marginBottom: '2rem',
       }}>
@@ -146,7 +165,55 @@ export function Dashboard() {
           <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#17a2b8' }}>
             {stats.confirmedBookings}
           </div>
-          <div style={{ color: '#666', marginTop: '0.5rem' }}>Reservas Confirmadas</div>
+          <div style={{ color: '#666', marginTop: '0.5rem' }}>Confirmadas</div>
+          <div style={{ fontSize: '0.875rem', color: '#6c757d', marginTop: '0.5rem' }}>
+            {stats.completedBookings} completadas
+          </div>
+        </div>
+
+        <div style={{
+          backgroundColor: 'white',
+          padding: '1.5rem',
+          borderRadius: '8px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+        }}>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#fd7e14' }}>
+            {stats.todayBookings}
+          </div>
+          <div style={{ color: '#666', marginTop: '0.5rem' }}>Reservas Hoy</div>
+          <div style={{ fontSize: '0.875rem', color: '#6c757d', marginTop: '0.5rem' }}>
+            {stats.monthBookings} este mes
+          </div>
+        </div>
+
+        <div style={{
+          backgroundColor: 'white',
+          padding: '1.5rem',
+          borderRadius: '8px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+        }}>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#20c997' }}>
+            ${stats.totalRevenue.toFixed(2)}
+          </div>
+          <div style={{ color: '#666', marginTop: '0.5rem' }}>Ingresos Totales</div>
+          <div style={{ fontSize: '0.875rem', color: '#28a745', marginTop: '0.5rem' }}>
+            ${stats.todayRevenue.toFixed(2)} hoy
+          </div>
+        </div>
+
+        <div style={{
+          backgroundColor: 'white',
+          padding: '1.5rem',
+          borderRadius: '8px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+        }}>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#6f42c1' }}>
+            ${stats.monthRevenue.toFixed(2)}
+          </div>
+          <div style={{ color: '#666', marginTop: '0.5rem' }}>Ingresos del Mes</div>
+          <div style={{ fontSize: '0.875rem', color: '#6c757d', marginTop: '0.5rem' }}>
+            {stats.monthBookings} reservas
+          </div>
         </div>
       </div>
 
