@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getBusinesses,
@@ -32,6 +32,10 @@ export function AdminBusinesses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
       setShowCreateModal(false);
+    },
+    onError: (error: any) => {
+      console.error('Error creating business:', error);
+      // El error se captura y se muestra en el modal
     },
   });
 
@@ -349,10 +353,12 @@ function CreateBusinessModal({
   onClose,
   onSubmit,
   isLoading,
+  error: mutationError,
 }: {
   onClose: () => void;
   onSubmit: (data: CreateBusinessRequest) => void;
   isLoading: boolean;
+  error?: any;
 }) {
   const [formData, setFormData] = useState<CreateBusinessRequest>({
     name: '',
@@ -363,9 +369,23 @@ function CreateBusinessModal({
     is_active: true,
     is_trial: false,
   });
+  const [error, setError] = useState<string>('');
+
+  // Actualizar error cuando cambia mutationError
+  useEffect(() => {
+    if (mutationError) {
+      const errorMessage = mutationError?.response?.data?.error 
+        || mutationError?.message 
+        || 'Error al crear el negocio. Por favor, intenta de nuevo.';
+      setError(errorMessage);
+    } else {
+      setError('');
+    }
+  }, [mutationError]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(''); // Limpiar error anterior
     onSubmit(formData);
   };
 
@@ -394,6 +414,18 @@ function CreateBusinessModal({
         }}
       >
         <h2 style={{ marginTop: 0 }}>Nuevo Negocio</h2>
+        {error && (
+          <div style={{
+            padding: '0.75rem',
+            marginBottom: '1rem',
+            backgroundColor: '#fee',
+            color: '#c00',
+            borderRadius: '4px',
+            border: '1px solid #fcc',
+          }}>
+            {error}
+          </div>
+        )}
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem' }}>Nombre</label>

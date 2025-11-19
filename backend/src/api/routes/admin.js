@@ -74,32 +74,36 @@ router.post('/businesses', async (req, res) => {
 
     const business = await Business.create(value);
     
-    // Crear usuario owner por defecto
+    // Crear usuario owner por defecto (no bloquea si falla)
     if (value.owner_phone) {
-      try {
-        await BusinessUser.create({
-          business_id: business.id,
-          phone: value.owner_phone,
-          password: 'changeme123', // Contraseña temporal, debería cambiarse
-          role: 'owner',
-        });
-      } catch (err) {
+      BusinessUser.create({
+        business_id: business.id,
+        phone: value.owner_phone,
+        password: 'changeme123', // Contraseña temporal, debería cambiarse
+        role: 'owner',
+      }).catch(err => {
         console.warn('Error creating default owner user:', err);
-      }
+      });
     }
     
-    // Inicializar bot si tiene whatsapp_number
+    // Inicializar bot en segundo plano (no bloquea la respuesta)
+    // El bot se inicializará automáticamente al arrancar el servidor o se puede inicializar manualmente
     if (business.whatsapp_number) {
-      try {
-        const bot = new BookingBot(business.id, business.whatsapp_number);
-        await bot.initialize();
-        activeBots.set(business.id, bot);
-        console.log(`✅ Bot inicializado para nuevo negocio: ${business.name} (${business.id})`);
-      } catch (err) {
-        console.error(`Error inicializando bot para ${business.name}:`, err);
-      }
+      // Inicializar bot de forma asíncrona (no bloqueante)
+      (async () => {
+        try {
+          const bot = new BookingBot(business.id, business.whatsapp_number);
+          await bot.initialize();
+          activeBots.set(business.id, bot);
+          console.log(`✅ Bot inicializado para nuevo negocio: ${business.name} (${business.id})`);
+        } catch (err) {
+          console.error(`Error inicializando bot para ${business.name}:`, err);
+          // No falla la creación del negocio si el bot falla
+        }
+      })();
     }
     
+    // Responder inmediatamente después de crear el negocio
     res.status(201).json({ data: business });
   } catch (error) {
     console.error('Error creating business:', error);
