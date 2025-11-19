@@ -313,10 +313,15 @@ router.get('/businesses/:id/qr', async (req, res) => {
         }
       }
       
+      // NO devolver 404, devolver 200 con status 'not_available'
+      // Esto evita que el frontend trate esto como un error
       console.log(`[QR] No hay QR disponible para negocio ${businessId}`);
-      return res.status(404).json({
-        error: 'QR code no disponible',
-        message: 'El QR code no está disponible. El bot puede estar ya autenticado o no estar inicializado. Intenta hacer clic en "Reconectar Bot" para generar un nuevo QR.',
+      return res.json({
+        data: {
+          qr: null,
+          status: 'not_available',
+          message: 'El QR code no está disponible. El bot puede estar ya autenticado o no estar inicializado. Intenta hacer clic en "Reconectar Bot" para generar un nuevo QR.',
+        },
       });
     }
     

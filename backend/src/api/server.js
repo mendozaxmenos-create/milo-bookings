@@ -36,13 +36,17 @@ const corsOptions = {
     // Obtener orígenes permitidos desde variable de entorno
     const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
     
-    // Permitir todos los dominios de Vercel automáticamente
-    const isVercelDomain = origin.includes('.vercel.app') || origin.includes('vercel.app');
+    // Permitir todos los dominios de Vercel automáticamente (incluyendo subdominios)
+    const isVercelDomain = origin.includes('.vercel.app') || 
+                           origin.includes('vercel.app') ||
+                           origin.includes('vercel.com') ||
+                           origin.includes('milo-bookings-projects');
     
-    // Si está en la lista de permitidos o es un dominio de Vercel
+    // Si está en la lista de permitidos, es un dominio de Vercel, o no hay orígenes configurados
     if (allowedOrigins.includes(origin) || isVercelDomain || allowedOrigins.length === 0) {
       callback(null, true);
     } else {
+      console.warn(`[CORS] Origen bloqueado: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
