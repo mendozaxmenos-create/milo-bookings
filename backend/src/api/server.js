@@ -22,10 +22,33 @@ const app = express();
 app.set('trust proxy', 1);
 
 // CORS primero
-app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+// Función para verificar si el origen está permitido
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Permitir requests sin origen (Postman, curl, etc.)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // Obtener orígenes permitidos desde variable de entorno
+    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
+    
+    // Permitir todos los dominios de Vercel automáticamente
+    const isVercelDomain = origin.includes('.vercel.app') || origin.includes('vercel.app');
+    
+    // Si está en la lista de permitidos o es un dominio de Vercel
+    if (allowedOrigins.includes(origin) || isVercelDomain || allowedOrigins.length === 0) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
 
 // Body parsers
 app.use(express.json());
