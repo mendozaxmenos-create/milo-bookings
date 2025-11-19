@@ -27,8 +27,10 @@ const DEFAULT_SETTINGS: BusinessSettings = {
   reminder_message: '',
 };
 
+type StringSettingsKey = 'welcome_message' | 'booking_confirmation_message' | 'payment_instructions_message' | 'reminder_message';
+
 const FORM_FIELDS: Array<{
-  key: keyof BusinessSettings;
+  key: StringSettingsKey;
   label: string;
   helper: string;
 }> = [
@@ -192,7 +194,7 @@ export function Settings() {
     ];
   }, [formData]);
 
-  const handleChange = (field: keyof BusinessSettings, value: string) => {
+  const handleChange = (field: StringSettingsKey, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -263,7 +265,7 @@ export function Settings() {
               </div>
               <textarea
                 id={field.key}
-                value={formData[field.key]}
+                value={formData[field.key] || ''}
                 onChange={(event) => handleChange(field.key, event.target.value)}
                 rows={4}
                 placeholder="Escribe tu mensaje..."
