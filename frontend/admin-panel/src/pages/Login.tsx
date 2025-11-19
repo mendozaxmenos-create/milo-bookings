@@ -86,13 +86,13 @@ export function Login() {
 
       const response = await forgotPassword(requestData);
       
-      // Si es super admin y viene token en la respuesta, mostrarlo
+      // Si es super admin y viene token en la respuesta, redirigir al reset
       if (isSuperAdmin && response.token) {
-        setSuccessMessage(`Tu código de recuperación es: ${response.token}\n\n⚠️ En producción, esto debería enviarse por email.`);
         setResetTokenInput(response.token);
         setShowForgotPassword(false);
-        // Mostrar formulario de reset automáticamente
+        // Mostrar formulario de reset automáticamente con el token
         navigate(`/login?token=${response.token}`);
+        return; // Salir para que navegue al reset
       } else if (isSuperAdmin) {
         setSuccessMessage('Si el usuario existe, recibirás un código de recuperación por email.');
         setShowForgotPassword(false);
