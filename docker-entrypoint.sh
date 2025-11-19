@@ -1,11 +1,21 @@
 #!/bin/bash
-set -e
+# No usar set -e aquí para evitar que el script se detenga silenciosamente
+# En su lugar, manejaremos errores explícitamente
 
 echo "🚀 Iniciando Milo Bookings..."
+echo "📂 Directorio actual: $(pwd)"
+echo "📦 Variables de entorno:"
+echo "   NODE_ENV: ${NODE_ENV:-not set}"
+echo "   PORT: ${PORT:-not set}"
+echo "   DATABASE_URL: ${DATABASE_URL:+set (hidden)}"
 
 # Ejecutar migraciones de base de datos
 echo "📊 Ejecutando migraciones de base de datos..."
-cd backend
+cd backend || {
+  echo "❌ Error: No se pudo cambiar al directorio backend"
+  exit 1
+}
+
 npm run db:migrate || {
   echo "⚠️  Advertencia: Error al ejecutar migraciones. Continuando..."
 }
@@ -33,8 +43,12 @@ if [ "$FORCE_DB_SEED" = "true" ]; then
 fi
 
 # Volver al directorio raíz
-cd ..
+cd .. || {
+  echo "❌ Error: No se pudo volver al directorio raíz"
+  exit 1
+}
 
 # Ejecutar el comando principal
+echo "🚀 Ejecutando comando principal: $@"
 exec "$@"
 
