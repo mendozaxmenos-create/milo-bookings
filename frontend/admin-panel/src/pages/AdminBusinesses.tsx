@@ -96,19 +96,23 @@ export function AdminBusinesses() {
     },
   });
 
-  const loadQRCode = async (businessId: string) => {
+  const loadQRCode = async (businessId: string): Promise<boolean> => {
     try {
       const response = await getBusinessQR(businessId);
       if (response.data.qr) {
         setQrCode(response.data.qr);
+        return true; // QR encontrado, detener polling
       } else if (response.data.status === 'authenticated') {
         // Bot ya está autenticado
         setQrCode('AUTHENTICATED');
+        return true; // Bot autenticado, detener polling
       } else if (response.data.status === 'not_available') {
         // No hay QR disponible (pero no es un error)
         setQrCode(null);
+        return false; // Continuar polling
       } else {
         setQrCode(null);
+        return false; // Continuar polling
       }
     } catch (error: any) {
       console.error('Error loading QR:', error);
@@ -117,10 +121,12 @@ export function AdminBusinesses() {
       // Solo loggear errores de red reales, no 404s (ahora el backend devuelve 200)
       if (error?.code === 'ERR_NETWORK' || error?.response?.status >= 500) {
         console.warn('Error de red al cargar QR. El servidor puede estar caído.');
+        throw error; // Lanzar error para detener polling
       } else if (error?.response?.status === 404) {
         // Esto no debería pasar ahora, pero por si acaso
         console.warn('QR no disponible. El bot puede necesitar ser reconectado.');
       }
+      return false; // Continuar polling en caso de otros errores
     }
   };
 
