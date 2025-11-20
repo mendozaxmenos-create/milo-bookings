@@ -335,20 +335,42 @@ router.post('/businesses/:id/activate', async (req, res) => {
 router.get('/businesses/:id/qr', async (req, res) => {
   try {
     const businessId = req.params.id;
+    console.log(`[QR] ==========================================`);
+    console.log(`[QR] Solicitud de QR para negocio ${businessId}`);
+    console.log(`[QR] Timestamp: ${new Date().toISOString()}`);
+    
+    // Verificar si el negocio existe
+    const business = await Business.findById(businessId);
+    if (!business) {
+      console.log(`[QR] ❌ Negocio ${businessId} no encontrado en la base de datos`);
+      return res.status(404).json({ error: 'Business not found' });
+    }
+    console.log(`[QR] ✅ Negocio encontrado: ${business.name}`);
+    console.log(`[QR] WhatsApp number: ${business.whatsapp_number || 'NO CONFIGURADO'}`);
+    console.log(`[QR] Is active: ${business.is_active}`);
+    
     const qrData = getQRCode(businessId);
     const bot = activeBots.get(businessId);
     
-    console.log(`[QR] Solicitud de QR para negocio ${businessId}`);
     console.log(`[QR] QR data disponible: ${!!qrData}`);
-    console.log(`[QR] Bot activo: ${!!bot}`);
+    console.log(`[QR] Bot activo en memoria: ${!!bot}`);
+    console.log(`[QR] Total de bots activos: ${activeBots.size}`);
+    console.log(`[QR] IDs de bots activos:`, Array.from(activeBots.keys()));
     
     if (!qrData) {
       // Verificar si el bot está autenticado
       if (bot) {
         try {
+          console.log(`[QR] Verificando estado del bot...`);
           const clientInfo = bot.client?.info;
+          console.log(`[QR] Client info disponible: ${!!clientInfo}`);
           if (clientInfo) {
-            console.log(`[QR] Bot ${businessId} ya está autenticado`);
+            console.log(`[QR] ✅ Bot ${businessId} ya está autenticado`);
+            console.log(`[QR] Client info:`, {
+              wid: clientInfo.wid,
+              pushname: clientInfo.pushname,
+              platform: clientInfo.platform,
+            });
             return res.json({
               data: {
                 qr: null,
@@ -356,15 +378,22 @@ router.get('/businesses/:id/qr', async (req, res) => {
                 message: 'Bot ya está conectado a WhatsApp',
               },
             });
+          } else {
+            console.log(`[QR] ⏳ Bot existe pero no está autenticado aún`);
           }
         } catch (err) {
-          console.log(`[QR] Error verificando estado del bot: ${err.message}`);
+          console.log(`[QR] ⚠️ Error verificando estado del bot: ${err.message}`);
+          console.log(`[QR] Error stack:`, err.stack);
         }
+      } else {
+        console.log(`[QR] ⚠️ No hay bot activo para este negocio`);
+        console.log(`[QR] Esto puede significar que el bot no se inicializó o se desconectó`);
       }
       
       // NO devolver 404, devolver 200 con status 'not_available'
       // Esto evita que el frontend trate esto como un error
-      console.log(`[QR] No hay QR disponible para negocio ${businessId}`);
+      console.log(`[QR] ❌ No hay QR disponible para negocio ${businessId}`);
+      console.log(`[QR] ==========================================`);
       return res.json({
         data: {
           qr: null,
@@ -374,7 +403,10 @@ router.get('/businesses/:id/qr', async (req, res) => {
       });
     }
     
-    console.log(`[QR] QR encontrado para negocio ${businessId}`);
+    console.log(`[QR] ✅ QR encontrado para negocio ${businessId}`);
+    console.log(`[QR] QR timestamp: ${qrData.timestamp}`);
+    console.log(`[QR] QR expires at: ${qrData.expiresAt}`);
+    console.log(`[QR] ==========================================`);
     res.json({
       data: {
         qr: qrData.qr,
@@ -384,8 +416,10 @@ router.get('/businesses/:id/qr', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error getting QR code:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error(`[QR] ❌ Error getting QR code:`, error);
+    console.error(`[QR] Error message:`, error.message);
+    console.error(`[QR] Error stack:`, error.stack);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
 
