@@ -875,7 +875,24 @@ function CredentialsModal({
             </div>
           ))}
         </div>
-        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => {
+              window.open(`/?business=${business.id}`, '_blank');
+            }}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: '#17a2b8',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              flex: '1 1 auto',
+              minWidth: '180px',
+            }}
+          >
+            Abrir panel en nueva pestaña
+          </button>
           <button
             onClick={onClose}
             style={{
@@ -885,6 +902,8 @@ function CredentialsModal({
               border: 'none',
               borderRadius: '4px',
               cursor: 'pointer',
+              flex: '1 1 auto',
+              minWidth: '120px',
             }}
           >
             Cerrar
