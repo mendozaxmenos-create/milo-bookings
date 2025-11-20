@@ -96,47 +96,77 @@ router.get('/businesses', async (req, res) => {
  */
 router.post('/businesses', async (req, res) => {
   try {
+    console.log('[Admin] POST /businesses - Creando nuevo negocio');
+    console.log('[Admin] Datos recibidos:', {
+      name: req.body.name,
+      whatsapp_number: req.body.whatsapp_number,
+      owner_phone: req.body.owner_phone,
+      is_active: req.body.is_active,
+    });
+    
     const { error, value } = validateBusiness(req.body);
     if (error) {
+      console.error('[Admin] Error validando datos:', error.details[0].message);
       return res.status(400).json({ error: error.details[0].message });
     }
 
+    console.log('[Admin] Datos validados, creando negocio...');
     const business = await Business.create(value);
+    console.log('[Admin] ✅ Negocio creado en la base de datos:', {
+      id: business.id,
+      name: business.name,
+      whatsapp_number: business.whatsapp_number,
+      is_active: business.is_active,
+    });
+    
+    // Verificar que se guardó correctamente
+    const verifyBusiness = await Business.findById(business.id);
+    if (!verifyBusiness) {
+      console.error('[Admin] ❌ ERROR: Negocio no se encontró después de crearlo');
+      throw new Error('Business was not saved correctly');
+    }
+    console.log('[Admin] ✅ Negocio verificado en la base de datos');
     
     // Crear usuario owner por defecto (no bloquea si falla)
     if (value.owner_phone) {
+      console.log('[Admin] Creando usuario owner por defecto...');
       BusinessUser.create({
         business_id: business.id,
         phone: value.owner_phone,
         password: 'changeme123', // Contraseña temporal, debería cambiarse
         role: 'owner',
+      }).then(() => {
+        console.log('[Admin] ✅ Usuario owner creado correctamente');
       }).catch(err => {
-        console.warn('Error creating default owner user:', err);
+        console.warn('[Admin] ⚠️ Error creating default owner user:', err.message);
       });
     }
     
     // Inicializar bot en segundo plano (no bloquea la respuesta)
     // El bot se inicializará automáticamente al arrancar el servidor o se puede inicializar manualmente
     if (business.whatsapp_number) {
+      console.log('[Admin] Inicializando bot en segundo plano...');
       // Inicializar bot de forma asíncrona (no bloqueante)
       (async () => {
         try {
           const bot = new BookingBot(business.id, business.whatsapp_number);
           await bot.initialize();
           activeBots.set(business.id, bot);
-          console.log(`✅ Bot inicializado para nuevo negocio: ${business.name} (${business.id})`);
+          console.log(`[Admin] ✅ Bot inicializado para nuevo negocio: ${business.name} (${business.id})`);
         } catch (err) {
-          console.error(`Error inicializando bot para ${business.name}:`, err);
+          console.error(`[Admin] ❌ Error inicializando bot para ${business.name}:`, err.message);
           // No falla la creación del negocio si el bot falla
         }
       })();
     }
     
     // Responder inmediatamente después de crear el negocio
+    console.log('[Admin] ✅ Respondiendo con negocio creado');
     res.status(201).json({ data: business });
   } catch (error) {
-    console.error('Error creating business:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('[Admin] ❌ Error creating business:', error);
+    console.error('[Admin] Error stack:', error.stack);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
 
