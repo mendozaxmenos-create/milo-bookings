@@ -243,21 +243,37 @@ router.put('/businesses/:id', async (req, res) => {
       return res.status(404).json({ error: 'Business not found' });
     }
     
-    // Si cambió el whatsapp_number, reinicializar bot
+    // Si cambió el whatsapp_number, reinicializar bot en segundo plano
     if (value.whatsapp_number) {
       const existingBot = activeBots.get(business.id);
       if (existingBot) {
-        await existingBot.disconnect();
+        console.log(`[Admin] Desconectando bot existente para ${business.name}...`);
+        try {
+          await existingBot.clearSession(); // Limpiar sesión para forzar nueva autenticación
+        } catch (err) {
+          console.warn(`[Admin] Error limpiando sesión:`, err.message);
+        }
+        try {
+          await existingBot.disconnect();
+        } catch (err) {
+          console.warn(`[Admin] Error desconectando bot:`, err.message);
+        }
         activeBots.delete(business.id);
       }
       
-      try {
-        const bot = new BookingBot(business.id, value.whatsapp_number);
-        await bot.initialize();
-        activeBots.set(business.id, bot);
-      } catch (err) {
-        console.error(`Error reinicializando bot para ${business.name}:`, err);
-      }
+      // Inicializar bot en segundo plano (no bloquea la respuesta)
+      console.log(`[Admin] Inicializando bot con nuevo número ${value.whatsapp_number} para ${business.name}...`);
+      (async () => {
+        try {
+          const bot = new BookingBot(business.id, value.whatsapp_number);
+          await bot.initialize();
+          activeBots.set(business.id, bot);
+          console.log(`[Admin] ✅ Bot reinicializado correctamente para ${business.name}`);
+        } catch (err) {
+          console.error(`[Admin] ❌ Error reinicializando bot para ${business.name}:`, err.message);
+          console.error(`[Admin] Error stack:`, err.stack);
+        }
+      })();
     }
     
     res.json({ data: business });
