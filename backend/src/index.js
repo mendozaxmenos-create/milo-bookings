@@ -83,22 +83,37 @@ async function initializeBots() {
     // Obtener todos los negocios activos
     const businesses = await Business.findAllActive();
     
-    console.log(`📱 Inicializando ${businesses.length} bot(s) de WhatsApp...`);
+    console.log(`📱 [Init] Encontrados ${businesses.length} negocio(s) activo(s) en la base de datos`);
+    console.log(`📱 [Init] Detalles de negocios:`, businesses.map(b => ({
+      id: b.id,
+      name: b.name,
+      whatsapp_number: b.whatsapp_number,
+      is_active: b.is_active
+    })));
+    console.log(`📱 [Init] Inicializando ${businesses.length} bot(s) de WhatsApp...`);
     
     for (const business of businesses) {
       if (business.whatsapp_number) {
         try {
+          console.log(`🔄 [Init] Inicializando bot para: ${business.name} (${business.id})`);
+          console.log(`🔄 [Init] WhatsApp number: ${business.whatsapp_number}`);
           const bot = new BookingBot(business.id, business.whatsapp_number);
           await bot.initialize();
           activeBots.set(business.id, bot);
-          console.log(`✅ Bot inicializado para: ${business.name} (${business.id})`);
+          console.log(`✅ [Init] Bot inicializado para: ${business.name} (${business.id})`);
         } catch (error) {
-          console.error(`❌ Error al inicializar bot para ${business.name}:`, error.message);
+          console.error(`❌ [Init] Error al inicializar bot para ${business.name} (${business.id}):`, error.message);
+          console.error(`❌ [Init] Error stack:`, error.stack);
         }
+      } else {
+        console.log(`⚠️ [Init] Negocio ${business.name} (${business.id}) no tiene whatsapp_number, saltando...`);
       }
     }
+    
+    console.log(`📱 [Init] Total de bots activos después de inicialización: ${activeBots.size}`);
   } catch (error) {
-    console.error('Error al inicializar bots:', error);
+    console.error('❌ [Init] Error al inicializar bots:', error);
+    console.error('❌ [Init] Error stack:', error.stack);
   }
 }
 
