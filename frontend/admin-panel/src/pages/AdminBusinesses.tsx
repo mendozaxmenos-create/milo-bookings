@@ -124,29 +124,11 @@ export function AdminBusinesses() {
     }
   };
 
-  const handleShowQR = async (business: Business) => {
+  const handleShowQR = (business: Business) => {
     setSelectedBusiness(business);
+    setQrCode(null); // Resetear QR antes de mostrar modal
     setShowQRModal(true);
-    await loadQRCode(business.id);
-    
-    // Si no hay QR, intentar cargarlo varias veces (polling)
-    // El bot puede estar inicializándose y generar el QR en unos segundos
-    if (!qrCode) {
-      let attempts = 0;
-      const maxAttempts = 10; // Intentar 10 veces
-      const interval = setInterval(async () => {
-        attempts++;
-        await loadQRCode(business.id);
-        
-        // Si encontramos QR o alcanzamos el máximo de intentos, parar
-        if (qrCode || attempts >= maxAttempts) {
-          clearInterval(interval);
-        }
-      }, 2000); // Intentar cada 2 segundos
-      
-      // Limpiar intervalo si el modal se cierra
-      return () => clearInterval(interval);
-    }
+    // El modal manejará el polling automáticamente
   };
 
   const handleReconnectBot = async (businessId: string) => {
@@ -388,7 +370,9 @@ export function AdminBusinesses() {
             setSelectedBusiness(null);
             setQrCode(null);
           }}
-          onRefresh={() => loadQRCode(selectedBusiness.id)}
+                 onRefresh={async () => {
+                   return await loadQRCode(selectedBusiness.id);
+                 }}
         />
       )}
 
