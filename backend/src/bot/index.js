@@ -51,13 +51,20 @@ export class BookingBot {
   }
 
   async initialize() {
+    console.log(`🚀 [Bot ${this.businessId}] Starting initialization...`);
+    console.log(`🚀 [Bot ${this.businessId}] WhatsApp number: ${this.whatsappNumber}`);
+    console.log(`🚀 [Bot ${this.businessId}] Session path: ${this.sessionStorage.getLocalAuthPath()}`);
+    
     // Setup de eventos
     this.client.on('qr', (qr) => {
-      console.log(`\n📱 QR Code for business ${this.businessId}:`);
-      console.log(`   Escanea este código QR con WhatsApp para conectar el bot\n`);
+      console.log(`\n📱 [Bot ${this.businessId}] QR Code generated:`);
+      console.log(`📱 [Bot ${this.businessId}] Escanea este código QR con WhatsApp para conectar el bot\n`);
+      console.log(`📱 [Bot ${this.businessId}] QR length: ${qr.length} characters`);
+      console.log(`📱 [Bot ${this.businessId}] Timestamp: ${new Date().toISOString()}\n`);
       
       // Guardar QR code para acceso via API
       saveQRCode(this.businessId, qr);
+      console.log(`💾 [Bot ${this.businessId}] QR code saved to storage`);
       
       // En producción, también podemos enviar el QR a un webhook o almacenarlo
       if (process.env.QR_WEBHOOK_URL) {
@@ -71,19 +78,38 @@ export class BookingBot {
     });
 
     this.client.on('ready', () => {
-      console.log(`Bot ready for business ${this.businessId}`);
+      console.log(`✅ [Bot ${this.businessId}] Bot ready and authenticated!`);
+      console.log(`✅ [Bot ${this.businessId}] Client info:`, {
+        wid: this.client.info?.wid,
+        pushname: this.client.info?.pushname,
+        platform: this.client.info?.platform,
+      });
+      // Limpiar QR cuando el bot está listo
+      const { deleteQRCode } = await import('../services/qrStorage.js');
+      deleteQRCode(this.businessId);
     });
 
     this.client.on('authenticated', () => {
-      console.log(`Bot authenticated for business ${this.businessId}`);
+      console.log(`🔐 [Bot ${this.businessId}] Bot authenticated successfully!`);
+      console.log(`🔐 [Bot ${this.businessId}] Session saved, waiting for ready event...`);
     });
 
     this.client.on('auth_failure', (msg) => {
-      console.error(`Auth failure for business ${this.businessId}:`, msg);
+      console.error(`❌ [Bot ${this.businessId}] Auth failure:`, msg);
+      console.error(`❌ [Bot ${this.businessId}] Error details:`, JSON.stringify(msg, null, 2));
     });
 
     this.client.on('disconnected', (reason) => {
-      console.log(`Bot disconnected for business ${this.businessId}:`, reason);
+      console.log(`⚠️ [Bot ${this.businessId}] Bot disconnected. Reason:`, reason);
+      console.log(`⚠️ [Bot ${this.businessId}] Disconnection details:`, JSON.stringify(reason, null, 2));
+    });
+
+    this.client.on('loading_screen', (percent, message) => {
+      console.log(`⏳ [Bot ${this.businessId}] Loading: ${percent}% - ${message}`);
+    });
+
+    this.client.on('change_state', (state) => {
+      console.log(`🔄 [Bot ${this.businessId}] State changed to: ${state}`);
     });
 
     this.client.on('message', async (msg) => {
@@ -95,8 +121,39 @@ export class BookingBot {
       }
     });
 
-    await this.client.initialize();
-    await this.messageHandler.initialize();
+    try {
+      console.log(`🔄 [Bot ${this.businessId}] Calling client.initialize()...`);
+      await this.client.initialize();
+      console.log(`✅ [Bot ${this.businessId}] Client initialized successfully`);
+      
+      console.log(`🔄 [Bot ${this.businessId}] Initializing message handler...`);
+      await this.messageHandler.initialize();
+      console.log(`✅ [Bot ${this.businessId}] Message handler initialized successfully`);
+      
+      // Verificar estado del cliente después de inicializar
+      try {
+        const clientInfo = this.client.info;
+        if (clientInfo) {
+          console.log(`✅ [Bot ${this.businessId}] Client is already authenticated!`);
+          console.log(`✅ [Bot ${this.businessId}] Client info:`, {
+            wid: clientInfo.wid,
+            pushname: clientInfo.pushname,
+            platform: clientInfo.platform,
+          });
+          // Limpiar QR si ya está autenticado
+          const { deleteQRCode } = await import('../services/qrStorage.js');
+          deleteQRCode(this.businessId);
+        } else {
+          console.log(`⏳ [Bot ${this.businessId}] Client not authenticated yet, waiting for QR scan...`);
+        }
+      } catch (err) {
+        console.log(`⏳ [Bot ${this.businessId}] Client info not available yet (this is normal if waiting for QR)`);
+      }
+    } catch (error) {
+      console.error(`❌ [Bot ${this.businessId}] Error during initialization:`, error);
+      console.error(`❌ [Bot ${this.businessId}] Error stack:`, error.stack);
+      throw error;
+    }
   }
 
   async disconnect() {
