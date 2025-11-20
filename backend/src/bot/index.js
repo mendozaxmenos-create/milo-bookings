@@ -123,12 +123,22 @@ export class BookingBot {
 
     try {
       console.log(`🔄 [Bot ${this.businessId}] Calling client.initialize()...`);
-      await this.client.initialize();
+      
+      // Inicializar con timeout para detectar si se queda colgado
+      const initPromise = this.client.initialize();
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout: client.initialize() took more than 60 seconds')), 60000);
+      });
+      
+      await Promise.race([initPromise, timeoutPromise]);
       console.log(`✅ [Bot ${this.businessId}] Client initialized successfully`);
       
       console.log(`🔄 [Bot ${this.businessId}] Initializing message handler...`);
       await this.messageHandler.initialize();
       console.log(`✅ [Bot ${this.businessId}] Message handler initialized successfully`);
+      
+      // Esperar un poco para que los eventos se disparen
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Verificar estado del cliente después de inicializar
       try {
@@ -143,14 +153,18 @@ export class BookingBot {
           // Limpiar QR si ya está autenticado
           const { deleteQRCode } = await import('../services/qrStorage.js');
           deleteQRCode(this.businessId);
+          console.log(`🗑️ [Bot ${this.businessId}] QR code deleted (bot already authenticated)`);
         } else {
           console.log(`⏳ [Bot ${this.businessId}] Client not authenticated yet, waiting for QR scan...`);
+          console.log(`⏳ [Bot ${this.businessId}] QR should be generated soon if not already available`);
         }
       } catch (err) {
         console.log(`⏳ [Bot ${this.businessId}] Client info not available yet (this is normal if waiting for QR)`);
+        console.log(`⏳ [Bot ${this.businessId}] Error accessing client.info:`, err.message);
       }
     } catch (error) {
       console.error(`❌ [Bot ${this.businessId}] Error during initialization:`, error);
+      console.error(`❌ [Bot ${this.businessId}] Error message:`, error.message);
       console.error(`❌ [Bot ${this.businessId}] Error stack:`, error.stack);
       throw error;
     }
