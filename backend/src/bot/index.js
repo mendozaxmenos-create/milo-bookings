@@ -225,100 +225,70 @@ export class BookingBot {
       console.log(`📨 [Bot ${this.businessId}] ==========================================`);
     });
 
-    try {
-      console.log(`🔄 [Bot ${this.businessId}] Calling client.initialize()...`);
-      
-      // Inicializar con timeout más largo (120 segundos) para entornos cloud
-      // En Render/cloud, la inicialización puede tardar más debido a recursos limitados
-      const initPromise = this.client.initialize();
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => {
-          console.warn(`⏰ [Bot ${this.businessId}] Timeout warning: client.initialize() está tardando más de 120 segundos`);
-          console.warn(`⏰ [Bot ${this.businessId}] Esto puede ser normal en entornos cloud. El bot continuará inicializándose en segundo plano.`);
-          reject(new Error('Timeout: client.initialize() took more than 120 seconds'));
-        }, 120000); // 120 segundos
-      });
-      
-      try {
-        await Promise.race([initPromise, timeoutPromise]);
-        console.log(`✅ [Bot ${this.businessId}] Client initialized successfully`);
-      } catch (timeoutError) {
-        if (timeoutError.message.includes('Timeout')) {
-          console.warn(`⚠️ [Bot ${this.businessId}] Timeout en initialize(), pero continuando...`);
-          console.warn(`⚠️ [Bot ${this.businessId}] El bot puede seguir inicializándose en segundo plano`);
-          // No lanzar el error, permitir que continúe
-          // El bot puede seguir funcionando aunque el initialize() no haya terminado
-        } else {
-          throw timeoutError;
-        }
-      }
-      
-      console.log(`🔄 [Bot ${this.businessId}] Initializing message handler...`);
-      await this.messageHandler.initialize();
-      console.log(`✅ [Bot ${this.businessId}] Message handler initialized successfully`);
-      
-      // Verificar estado del cliente inmediatamente después de inicializar
+    // Inicializar de forma ASÍNCRONA y NO BLOQUEANTE
+    // Esto permite que el bot esté "listo" inmediatamente mientras se inicializa en segundo plano
+    console.log(`⚡ [Bot ${this.businessId}] Iniciando cliente en segundo plano (no bloqueante)...`);
+    
+    // Inicializar el cliente de forma completamente asíncrona (sin await)
+    this.client.initialize().then(() => {
+      console.log(`✅ [Bot ${this.businessId}] Client initialized successfully (background)`);
+    }).catch((err) => {
+      console.error(`❌ [Bot ${this.businessId}] Error durante initialize (background):`, err.message);
+      // No lanzar el error, el bot puede seguir intentando
+    });
+    
+    // Inicializar message handler también de forma asíncrona
+    this.messageHandler.initialize().then(() => {
+      console.log(`✅ [Bot ${this.businessId}] Message handler initialized successfully (background)`);
+    }).catch((err) => {
+      console.error(`❌ [Bot ${this.businessId}] Error inicializando message handler:`, err.message);
+    });
+    
+    // Verificar estado inicial rápidamente (sin esperar mucho)
+    setTimeout(async () => {
       try {
         const clientInfo = this.client.info;
         if (clientInfo) {
-          console.log(`✅ [Bot ${this.businessId}] Client is already authenticated!`);
-          console.log(`✅ [Bot ${this.businessId}] Client info:`, {
-            wid: clientInfo.wid,
-            pushname: clientInfo.pushname,
-            platform: clientInfo.platform,
-          });
-          // Limpiar QR si ya está autenticado
+          console.log(`✅ [Bot ${this.businessId}] Bot ya está autenticado (verificación rápida)`);
           deleteQRCode(this.businessId);
-          console.log(`🗑️ [Bot ${this.businessId}] QR code deleted (bot already authenticated)`);
-          console.log(`✅ [Bot ${this.businessId}] Bot should be ready to receive messages NOW!`);
-        } else {
-          console.log(`⏳ [Bot ${this.businessId}] Client not authenticated yet, waiting for QR scan...`);
-          console.log(`⏳ [Bot ${this.businessId}] QR should be generated soon if not already available`);
-          console.log(`⏳ [Bot ${this.businessId}] Once QR is scanned, 'ready' event will fire`);
         }
       } catch (err) {
-        console.log(`⏳ [Bot ${this.businessId}] Client info not available yet (this is normal if waiting for QR)`);
-        console.log(`⏳ [Bot ${this.businessId}] Error accessing client.info:`, err.message);
+        // Ignorar errores en verificación rápida
       }
-      
-      // Verificar periódicamente si el bot se autenticó (por si el evento 'ready' no se disparó)
-      setTimeout(async () => {
-        try {
-          const clientInfo = this.client.info;
-          if (clientInfo) {
-            console.log(`✅ [Bot ${this.businessId}] [CHECK] Bot is authenticated! (verificación periódica)`);
-            console.log(`✅ [Bot ${this.businessId}] [CHECK] Client info:`, {
-              wid: clientInfo.wid,
-              pushname: clientInfo.pushname,
-            });
-            // Verificar si el event listener está activo
-            console.log(`✅ [Bot ${this.businessId}] [CHECK] Message event listeners should be active`);
-          } else {
-            console.log(`⏳ [Bot ${this.businessId}] [CHECK] Bot still not authenticated (verificación periódica)`);
-          }
-        } catch (err) {
-          console.log(`⏳ [Bot ${this.businessId}] [CHECK] Error checking client info:`, err.message);
-        }
-      }, 30000); // Verificar después de 30 segundos
-      
-      // Esperar un poco para que los eventos se disparen
-      console.log(`⏳ [Bot ${this.businessId}] Waiting 3 seconds for events to fire...`);
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Verificar estado nuevamente después de esperar
+    }, 2000); // Solo 2 segundos
+    
+    // Verificación periódica más larga (para casos donde tarda más en autenticarse)
+    setTimeout(async () => {
       try {
         const clientInfo = this.client.info;
         if (clientInfo) {
-          console.log(`✅ [Bot ${this.businessId}] After wait: Client is authenticated!`);
+          console.log(`✅ [Bot ${this.businessId}] [CHECK] Bot autenticado (verificación periódica)`);
+          deleteQRCode(this.businessId);
         } else {
-          console.log(`⏳ [Bot ${this.businessId}] After wait: Still waiting for authentication...`);
+          console.log(`⏳ [Bot ${this.businessId}] [CHECK] Bot aún no autenticado`);
         }
       } catch (err) {
-        console.log(`⏳ [Bot ${this.businessId}] After wait: Client info still not available`);
+        // Ignorar errores
       }
-      
-      console.log(`✅ [Bot ${this.businessId}] Initialization complete!`);
+    }, 15000); // 15 segundos
+    
+    // Retornar inmediatamente - el bot se está inicializando en segundo plano
+    console.log(`✅ [Bot ${this.businessId}] Bot disponible inmediatamente (inicialización en segundo plano)`);
+    
+    // No esperar nada - retornar inmediatamente
+    return;
+    
+    // El código de abajo NO se ejecutará debido al return
+    // Se dejó comentado para referencia
+    /* Código antiguo que esperaba la inicialización:
+    try {
+      await this.client.initialize();
+      await this.messageHandler.initialize();
+      ...
     } catch (error) {
+      ...
+    }
+    */
       console.error(`❌ [Bot ${this.businessId}] Error during initialization:`, error);
       console.error(`❌ [Bot ${this.businessId}] Error message:`, error.message);
       console.error(`❌ [Bot ${this.businessId}] Error stack:`, error.stack);
