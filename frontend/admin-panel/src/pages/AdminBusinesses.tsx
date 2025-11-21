@@ -533,25 +533,61 @@ function CreateBusinessModal({
               style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
             />
           </div>
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Número WhatsApp</label>
+          <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#e7f3ff', borderRadius: '4px', border: '2px solid #007bff' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#0056b3' }}>
+              📱 Número de WhatsApp del Bot *
+            </label>
             <input
               type="text"
               value={formData.whatsapp_number}
-              onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value })}
+              onChange={(e) => {
+                let value = e.target.value;
+                // Auto-formatear: agregar + si no lo tiene al principio
+                if (value && !value.startsWith('+') && /^\d/.test(value)) {
+                  value = '+' + value;
+                }
+                setFormData({ ...formData, whatsapp_number: value });
+              }}
+              placeholder="+5492617542218"
               required
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '2px solid #007bff',
+                borderRadius: '4px',
+                fontSize: '1rem',
+                fontFamily: 'monospace',
+                backgroundColor: 'white',
+              }}
             />
+            <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#495057' }}>
+              ⚠️ <strong>Importante:</strong> Este número quedará asociado al bot y solo podrá cambiarse desde aquí o desde el modal de credenciales. 
+              Debe incluir el código de país (ej: +54 para Argentina, +1 para USA).
+            </div>
+            <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: '#6c757d' }}>
+              💡 Formato: +[código país][número sin 0 inicial]
+            </div>
           </div>
           <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Teléfono del Dueño</label>
+            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Teléfono del Dueño *</label>
             <input
               type="text"
               value={formData.owner_phone}
-              onChange={(e) => setFormData({ ...formData, owner_phone: e.target.value })}
+              onChange={(e) => {
+                let value = e.target.value;
+                // Auto-formatear: agregar + si no lo tiene al principio
+                if (value && !value.startsWith('+') && /^\d/.test(value)) {
+                  value = '+' + value;
+                }
+                setFormData({ ...formData, owner_phone: value });
+              }}
+              placeholder="+5492617542218"
               required
               style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
             />
+            <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: '#6c757d' }}>
+              Teléfono del propietario del negocio (para credenciales de acceso)
+            </div>
           </div>
           <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '4px', border: '1px solid #dee2e6' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
@@ -920,23 +956,50 @@ function CredentialsModal({
               </div>
             </div>
           ))}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <strong>WhatsApp Number (para bot)</strong>
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '0.5rem',
+            padding: '1rem',
+            backgroundColor: '#e7f3ff',
+            borderRadius: '4px',
+            border: '2px solid #007bff',
+            marginTop: '0.5rem',
+          }}>
+            <div>
+              <strong style={{ color: '#0056b3', fontSize: '1rem' }}>📱 Número de WhatsApp del Bot</strong>
+              <p style={{ fontSize: '0.75rem', color: '#495057', marginTop: '0.25rem', marginBottom: 0 }}>
+                Este número quedará asociado al bot de este negocio. Solo puede cambiarse desde aquí.
+              </p>
+            </div>
             {editingWhatsApp ? (
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <input
                   type="text"
                   value={newWhatsAppNumber}
-                  onChange={(e) => setNewWhatsAppNumber(e.target.value)}
+                  onChange={(e) => {
+                    let value = e.target.value;
+                    // Auto-formatear: agregar + si no lo tiene al principio
+                    if (value && !value.startsWith('+') && /^\d/.test(value)) {
+                      value = '+' + value;
+                    }
+                    setNewWhatsAppNumber(value);
+                  }}
                   placeholder="+5492617542218"
                   style={{
-                    flex: 1,
-                    padding: '0.5rem',
-                    border: '1px solid #ddd',
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '2px solid #007bff',
                     borderRadius: '4px',
                     fontFamily: 'monospace',
+                    fontSize: '1rem',
+                    backgroundColor: 'white',
                   }}
                 />
+                <div style={{ fontSize: '0.75rem', color: '#6c757d' }}>
+                  💡 Formato: +[código país][número sin 0 inicial] (ej: +54 para Argentina)
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button
                   onClick={handleSaveWhatsApp}
                   disabled={isUpdating || !newWhatsAppNumber.trim()}
@@ -970,54 +1033,68 @@ function CredentialsModal({
                   Cancelar
                 </button>
               </div>
-            ) : (
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input
-                  value={business.whatsapp_number || 'Sin número configurado'}
-                  readOnly
-                  style={{
-                    flex: 1,
-                    padding: '0.5rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontFamily: 'monospace',
-                    backgroundColor: business.whatsapp_number ? 'white' : '#f8f9fa',
-                  }}
-                />
-                <button
-                  onClick={() => handleCopy(business.whatsapp_number || '')}
-                  disabled={!business.whatsapp_number}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    backgroundColor: '#007bff',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: business.whatsapp_number ? 'pointer' : 'not-allowed',
-                    opacity: business.whatsapp_number ? 1 : 0.6,
-                  }}
-                >
-                  Copiar
-                </button>
-                <button
-                  onClick={() => setEditingWhatsApp(true)}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    backgroundColor: '#ffc107',
-                    color: '#212529',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Editar
-                </button>
               </div>
-            )}
-            {!business.whatsapp_number && (
-              <p style={{ fontSize: '0.75rem', color: '#856404', marginTop: '0.25rem' }}>
-                ⚠️ Sin número de WhatsApp configurado. El bot no funcionará hasta que se configure un número.
-              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input
+                    value={business.whatsapp_number || 'Sin número configurado'}
+                    readOnly
+                    style={{
+                      flex: 1,
+                      padding: '0.75rem',
+                      border: business.whatsapp_number ? '2px solid #007bff' : '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontFamily: 'monospace',
+                      fontSize: '1rem',
+                      backgroundColor: business.whatsapp_number ? 'white' : '#f8f9fa',
+                      fontWeight: business.whatsapp_number ? 'bold' : 'normal',
+                      color: business.whatsapp_number ? '#212529' : '#6c757d',
+                    }}
+                  />
+                  <button
+                    onClick={() => handleCopy(business.whatsapp_number || '')}
+                    disabled={!business.whatsapp_number}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      backgroundColor: '#007bff',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: business.whatsapp_number ? 'pointer' : 'not-allowed',
+                      opacity: business.whatsapp_number ? 1 : 0.6,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Copiar
+                  </button>
+                  <button
+                    onClick={() => setEditingWhatsApp(true)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      backgroundColor: '#ffc107',
+                      color: '#212529',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    ✏️ Editar
+                  </button>
+                </div>
+                {!business.whatsapp_number && (
+                  <p style={{ fontSize: '0.75rem', color: '#856404', margin: 0, padding: '0.5rem', backgroundColor: '#fff3cd', borderRadius: '4px' }}>
+                    ⚠️ <strong>Importante:</strong> Sin número de WhatsApp configurado. El bot no funcionará hasta que se configure un número aquí.
+                  </p>
+                )}
+                {business.whatsapp_number && (
+                  <p style={{ fontSize: '0.75rem', color: '#155724', margin: 0, padding: '0.5rem', backgroundColor: '#d4edda', borderRadius: '4px' }}>
+                    ✅ Número configurado. El bot está asociado a este número y solo puede cambiarse desde este campo.
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </div>
