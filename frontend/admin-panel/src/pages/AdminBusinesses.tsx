@@ -908,6 +908,7 @@ function CredentialsModal({
   const [newWhatsAppNumber, setNewWhatsAppNumber] = useState(business.whatsapp_number || '');
   const previousIsUpdatingRef = useRef<boolean | undefined>(isUpdating);
   const savedNumberRef = useRef<string>(business.whatsapp_number || '');
+  const hasStartedUpdateRef = useRef<boolean>(false); // Flag para rastrear si realmente iniciamos una actualización
 
   // Actualizar el número cuando cambie el business prop (solo si no estamos editando)
   useEffect(() => {
@@ -915,6 +916,7 @@ function CredentialsModal({
       const currentBusinessNumber = business.whatsapp_number || '';
       setNewWhatsAppNumber(currentBusinessNumber);
       savedNumberRef.current = currentBusinessNumber;
+      hasStartedUpdateRef.current = false; // Reset el flag cuando salimos del modo de edición
     }
   }, [business.whatsapp_number, editingWhatsApp]);
   
@@ -922,10 +924,12 @@ function CredentialsModal({
   useEffect(() => {
     // Solo cerrar si:
     // 1. Estamos en modo de edición
-    // 2. La actualización terminó (isUpdating cambió de true a false)
-    // 3. El número en business coincide con el que guardamos (después de que se refresquen los datos)
+    // 2. REALMENTE iniciamos una actualización (hasStartedUpdateRef.current === true)
+    // 3. La actualización terminó (isUpdating cambió de true a false)
+    // 4. El número en business coincide con el que guardamos (después de que se refresquen los datos)
     if (
       editingWhatsApp &&
+      hasStartedUpdateRef.current === true &&
       previousIsUpdatingRef.current === true &&
       isUpdating === false
     ) {
@@ -934,6 +938,7 @@ function CredentialsModal({
       const currentBusinessNumber = business.whatsapp_number || '';
       console.log('[CredentialsModal] Verificando si cerrar modo de edición:', {
         editingWhatsApp,
+        hasStartedUpdate: hasStartedUpdateRef.current,
         wasUpdating: previousIsUpdatingRef.current,
         isUpdating,
         savedNumber: savedNumberRef.current,
@@ -945,6 +950,7 @@ function CredentialsModal({
         console.log('[CredentialsModal] ✅ Actualización exitosa, datos refrescados, cerrando modo de edición');
         setEditingWhatsApp(false);
         savedNumberRef.current = currentBusinessNumber;
+        hasStartedUpdateRef.current = false; // Reset el flag
       } else {
         console.log('[CredentialsModal] ⏳ Actualización terminó, pero datos aún no se han refrescado o no coinciden');
         // Los datos se refrescarán cuando la query se invalide, y este useEffect se ejecutará de nuevo
@@ -952,16 +958,18 @@ function CredentialsModal({
       }
     }
     
-    // Si el número en business cambió y estamos editando, y la actualización ya terminó,
-    // verificar si coincide con el que guardamos (por si el useEffect no se ejecutó antes)
+    // Si el número en business cambió y estamos editando, y REALMENTE iniciamos una actualización,
+    // y la actualización ya terminó, verificar si coincide con el que guardamos
     if (
       editingWhatsApp &&
+      hasStartedUpdateRef.current === true &&
       isUpdating === false &&
       business.whatsapp_number === savedNumberRef.current &&
       savedNumberRef.current !== ''
     ) {
-      console.log('[CredentialsModal] ✅ Número actualizado detectado, cerrando modo de edición');
+      console.log('[CredentialsModal] ✅ Número actualizado detectado (después de cambio), cerrando modo de edición');
       setEditingWhatsApp(false);
+      hasStartedUpdateRef.current = false; // Reset el flag
     }
     
     // Actualizar referencia del estado anterior de isUpdating
@@ -996,6 +1004,8 @@ function CredentialsModal({
     });
     
     if (onUpdate && numberToSave) {
+      // Marcar que realmente iniciamos una actualización
+      hasStartedUpdateRef.current = true;
       // Guardar el número que vamos a enviar en el ref para comparar después
       savedNumberRef.current = numberToSave;
       // Guardar el número que vamos a enviar antes de llamar a onUpdate
@@ -1186,6 +1196,8 @@ function CredentialsModal({
                   <button
                     onClick={() => {
                       console.log('[CredentialsModal] Botón Editar clickeado, activando modo de edición');
+                      // Reset el flag cuando entramos en modo de edición
+                      hasStartedUpdateRef.current = false;
                       setEditingWhatsApp(true);
                       // Asegurar que el valor inicial es el número actual del negocio
                       setNewWhatsAppNumber(business.whatsapp_number || '');
