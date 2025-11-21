@@ -99,23 +99,21 @@ async function initializeBots() {
           console.log(`🔄 [Init] WhatsApp number: ${business.whatsapp_number}`);
           const bot = new BookingBot(business.id, business.whatsapp_number);
           
-          // Agregar bot a activeBots ANTES de inicializar (para que esté disponible incluso si hay timeout)
+          // Agregar bot a activeBots ANTES de inicializar (para que esté disponible inmediatamente)
           activeBots.set(business.id, bot);
-          console.log(`✅ [Init] Bot agregado a activeBots antes de inicializar: ${business.id}`);
+          console.log(`✅ [Init] Bot agregado a activeBots: ${business.id}`);
           
-          // Inicializar bot (puede tomar tiempo o hacer timeout)
-          try {
-            await bot.initialize();
-            console.log(`✅ [Init] Bot inicializado correctamente: ${business.name} (${business.id})`);
-          } catch (initError) {
-            if (initError.message?.includes('Timeout')) {
-              console.warn(`⚠️ [Init] Timeout al inicializar bot ${business.id}, pero continuará en segundo plano`);
-              console.warn(`⚠️ [Init] El bot sigue en activeBots y puede autenticarse después`);
-            } else {
-              console.error(`❌ [Init] Error durante initialize() para ${business.id}:`, initError.message);
-            }
-            // No eliminar de activeBots, el bot puede seguir inicializándose
-          }
+          // Inicializar bot de forma ASÍNCRONA y NO BLOQUEANTE
+          // Esto permite que el servidor esté listo inmediatamente
+          bot.initialize().then(() => {
+            console.log(`✅ [Init] Bot inicialización completada: ${business.name} (${business.id})`);
+          }).catch((initError) => {
+            console.error(`❌ [Init] Error durante initialize() para ${business.id}:`, initError.message);
+            // No eliminar de activeBots, el bot puede seguir intentando
+          });
+          
+          // NO esperar a que termine la inicialización - el bot ya está en activeBots
+          console.log(`⚡ [Init] Bot ${business.id} inicializándose en segundo plano (servidor listo inmediatamente)`);
         } catch (error) {
           console.error(`❌ [Init] Error al crear bot para ${business.name} (${business.id}):`, error.message);
           console.error(`❌ [Init] Error stack:`, error.stack);

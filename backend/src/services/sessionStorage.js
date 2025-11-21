@@ -75,6 +75,19 @@ export class SessionStorage {
     }
   }
 
+  async hasSession() {
+    try {
+      // Verificar si existe el directorio de sesión y tiene archivos
+      const sessionFiles = await fs.readdir(this.sessionPath).catch(() => []);
+      
+      // LocalAuth guarda múltiples archivos en el directorio
+      // Si hay archivos, probablemente hay una sesión guardada
+      return sessionFiles.length > 0;
+    } catch (error) {
+      return false;
+    }
+  }
+
   async deleteSession() {
     try {
       const sessionFile = path.join(this.sessionPath, 'session.json');
