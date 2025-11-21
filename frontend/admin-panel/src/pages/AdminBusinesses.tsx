@@ -834,10 +834,13 @@ function CredentialsModal({
     setEditingWhatsApp(false);
   }, [business.whatsapp_number]);
 
+  // Determinar la contraseña correcta según el negocio
+  const defaultPassword = business.id === 'demo-business-001' ? 'demo123' : 'changeme123';
+  
   const fields = [
     { label: 'Business ID', value: business.id },
     { label: 'Teléfono Owner', value: business.owner_phone || business.phone || 'Sin teléfono' },
-    { label: 'Contraseña temporal', value: 'changeme123' },
+    { label: 'Contraseña temporal', value: defaultPassword },
   ];
 
   const handleCopy = async (text: string) => {
