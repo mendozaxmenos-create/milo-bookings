@@ -397,15 +397,23 @@ export function AdminBusinesses() {
             setCredentialsBusiness(null);
           }}
           onUpdate={(businessId, whatsappNumber) => {
+            console.log('[AdminBusinesses] Actualizando número de WhatsApp:', {
+              businessId,
+              whatsappNumber,
+            });
             updateBusinessMutation.mutate(
               {
                 id: businessId,
                 data: { whatsapp_number: whatsappNumber },
               },
               {
-                onSuccess: () => {
+                onSuccess: (response) => {
+                  console.log('[AdminBusinesses] Actualización exitosa:', response);
                   // Invalidar la query para refrescar los datos del negocio
                   queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
+                },
+                onError: (error) => {
+                  console.error('[AdminBusinesses] Error actualizando número:', error);
                 },
               }
             );
