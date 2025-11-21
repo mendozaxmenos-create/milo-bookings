@@ -53,17 +53,28 @@ router.get('/businesses', async (req, res) => {
           let botStatus = 'not_initialized';
           if (bot) {
             try {
+              // Verificar múltiples formas de determinar si el bot está autenticado
               const clientInfo = bot.client?.info;
-              console.log(`[Admin] 🔍 Negocio ${business.id}: clientInfo=${!!clientInfo}`);
-              if (clientInfo) {
+              const clientState = bot.client?.info?.wid; // Estado del cliente
+              const isAuthenticated = bot.client?.state === 'CONNECTED' || 
+                                     bot.client?.state === 'OPENING' ||
+                                     (clientInfo && clientInfo.wid);
+              
+              console.log(`[Admin] 🔍 Negocio ${business.id}: clientInfo=${!!clientInfo}, clientState=${bot.client?.state}, isAuthenticated=${!!isAuthenticated}`);
+              
+              if (clientInfo || isAuthenticated) {
                 botStatus = 'authenticated';
                 console.log(`[Admin] ✅ Negocio ${business.id}: Estado = authenticated`);
               } else if (qrData) {
                 botStatus = 'waiting_qr';
                 console.log(`[Admin] ⏳ Negocio ${business.id}: Estado = waiting_qr`);
               } else {
-                botStatus = 'initializing';
-                console.log(`[Admin] 🔄 Negocio ${business.id}: Estado = initializing`);
+                // Si el bot existe pero no está autenticado y no hay QR, verificar si está en proceso de inicialización
+                const isInitializing = bot.client && 
+                                      bot.client.state !== 'DISCONNECTED' && 
+                                      bot.client.state !== 'CLOSED';
+                botStatus = isInitializing ? 'initializing' : 'waiting_qr';
+                console.log(`[Admin] 🔄 Negocio ${business.id}: Estado = ${botStatus} (client state: ${bot.client?.state})`);
               }
             } catch (err) {
               console.warn(`[Admin] ⚠️ Error verificando estado del bot ${business.id}:`, err.message);

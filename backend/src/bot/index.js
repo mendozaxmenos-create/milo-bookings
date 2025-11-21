@@ -11,7 +11,7 @@ export class BookingBot {
     this.whatsappNumber = whatsappNumber;
     this.sessionStorage = new SessionStorage(businessId);
     
-    // Configuración de Puppeteer para entornos cloud
+    // Configuración de Puppeteer para entornos cloud (optimizada para memoria)
     const puppeteerOptions = {
       headless: true,
       args: [
@@ -24,6 +24,30 @@ export class BookingBot {
         '--disable-gpu',
         '--disable-software-rasterizer',
         '--disable-extensions',
+        '--disable-background-networking',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-breakpad',
+        '--disable-client-side-phishing-detection',
+        '--disable-default-apps',
+        '--disable-features=TranslateUI',
+        '--disable-hang-monitor',
+        '--disable-ipc-flooding-protection',
+        '--disable-popup-blocking',
+        '--disable-prompt-on-repost',
+        '--disable-renderer-backgrounding',
+        '--disable-sync',
+        '--disable-translate',
+        '--metrics-recording-only',
+        '--mute-audio',
+        '--no-default-browser-check',
+        '--safebrowsing-disable-auto-update',
+        '--enable-automation',
+        '--password-store=basic',
+        '--use-mock-keychain',
+        // NO usar --single-process en Render ya que puede causar problemas
+        // '--single-process', 
+        '--memory-pressure-off',
       ],
     };
     
