@@ -98,12 +98,29 @@ async function initializeBots() {
           console.log(`🔄 [Init] Inicializando bot para: ${business.name} (${business.id})`);
           console.log(`🔄 [Init] WhatsApp number: ${business.whatsapp_number}`);
           const bot = new BookingBot(business.id, business.whatsapp_number);
-          await bot.initialize();
+          
+          // Agregar bot a activeBots ANTES de inicializar (para que esté disponible incluso si hay timeout)
           activeBots.set(business.id, bot);
-          console.log(`✅ [Init] Bot inicializado para: ${business.name} (${business.id})`);
+          console.log(`✅ [Init] Bot agregado a activeBots antes de inicializar: ${business.id}`);
+          
+          // Inicializar bot (puede tomar tiempo o hacer timeout)
+          try {
+            await bot.initialize();
+            console.log(`✅ [Init] Bot inicializado correctamente: ${business.name} (${business.id})`);
+          } catch (initError) {
+            if (initError.message?.includes('Timeout')) {
+              console.warn(`⚠️ [Init] Timeout al inicializar bot ${business.id}, pero continuará en segundo plano`);
+              console.warn(`⚠️ [Init] El bot sigue en activeBots y puede autenticarse después`);
+            } else {
+              console.error(`❌ [Init] Error durante initialize() para ${business.id}:`, initError.message);
+            }
+            // No eliminar de activeBots, el bot puede seguir inicializándose
+          }
         } catch (error) {
-          console.error(`❌ [Init] Error al inicializar bot para ${business.name} (${business.id}):`, error.message);
+          console.error(`❌ [Init] Error al crear bot para ${business.name} (${business.id}):`, error.message);
           console.error(`❌ [Init] Error stack:`, error.stack);
+          // Si hay error al crear el bot, eliminarlo de activeBots
+          activeBots.delete(business.id);
         }
       } else {
         console.log(`⚠️ [Init] Negocio ${business.name} (${business.id}) no tiene whatsapp_number, saltando...`);
@@ -111,6 +128,7 @@ async function initializeBots() {
     }
     
     console.log(`📱 [Init] Total de bots activos después de inicialización: ${activeBots.size}`);
+    console.log(`📱 [Init] IDs de bots en activeBots:`, Array.from(activeBots.keys()));
   } catch (error) {
     console.error('❌ [Init] Error al inicializar bots:', error);
     console.error('❌ [Init] Error stack:', error.stack);

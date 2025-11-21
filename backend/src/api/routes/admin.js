@@ -38,29 +38,42 @@ router.get('/businesses', async (req, res) => {
     })));
     
     // Agregar información de estado del bot para cada negocio
+    console.log(`[Admin] 📊 Verificando estado de ${businesses.length} negocios...`);
+    console.log(`[Admin] 📊 Bots activos en memoria: ${activeBots.size}`);
+    console.log(`[Admin] 📊 IDs de bots activos:`, Array.from(activeBots.keys()));
+    
     const businessesWithStatus = await Promise.all(
       businesses.map(async (business) => {
         try {
           const bot = activeBots.get(business.id);
           const qrData = getQRCode(business.id);
           
+          console.log(`[Admin] 🔍 Negocio ${business.id}: bot=${!!bot}, qr=${!!qrData}`);
+          
           let botStatus = 'not_initialized';
           if (bot) {
             try {
               const clientInfo = bot.client?.info;
+              console.log(`[Admin] 🔍 Negocio ${business.id}: clientInfo=${!!clientInfo}`);
               if (clientInfo) {
                 botStatus = 'authenticated';
+                console.log(`[Admin] ✅ Negocio ${business.id}: Estado = authenticated`);
               } else if (qrData) {
                 botStatus = 'waiting_qr';
+                console.log(`[Admin] ⏳ Negocio ${business.id}: Estado = waiting_qr`);
               } else {
                 botStatus = 'initializing';
+                console.log(`[Admin] 🔄 Negocio ${business.id}: Estado = initializing`);
               }
             } catch (err) {
-              console.warn(`[Admin] Error verificando estado del bot ${business.id}:`, err.message);
+              console.warn(`[Admin] ⚠️ Error verificando estado del bot ${business.id}:`, err.message);
               botStatus = 'error';
             }
           } else if (qrData) {
             botStatus = 'waiting_qr';
+            console.log(`[Admin] ⏳ Negocio ${business.id}: Estado = waiting_qr (sin bot en memoria)`);
+          } else {
+            console.log(`[Admin] ❌ Negocio ${business.id}: Estado = not_initialized`);
           }
           
           return {
