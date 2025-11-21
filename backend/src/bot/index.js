@@ -241,14 +241,36 @@ export class BookingBot {
           const { deleteQRCode } = await import('../services/qrStorage.js');
           deleteQRCode(this.businessId);
           console.log(`🗑️ [Bot ${this.businessId}] QR code deleted (bot already authenticated)`);
+          console.log(`✅ [Bot ${this.businessId}] Bot should be ready to receive messages NOW!`);
         } else {
           console.log(`⏳ [Bot ${this.businessId}] Client not authenticated yet, waiting for QR scan...`);
           console.log(`⏳ [Bot ${this.businessId}] QR should be generated soon if not already available`);
+          console.log(`⏳ [Bot ${this.businessId}] Once QR is scanned, 'ready' event will fire`);
         }
       } catch (err) {
         console.log(`⏳ [Bot ${this.businessId}] Client info not available yet (this is normal if waiting for QR)`);
         console.log(`⏳ [Bot ${this.businessId}] Error accessing client.info:`, err.message);
       }
+      
+      // Verificar periódicamente si el bot se autenticó (por si el evento 'ready' no se disparó)
+      setTimeout(async () => {
+        try {
+          const clientInfo = this.client.info;
+          if (clientInfo) {
+            console.log(`✅ [Bot ${this.businessId}] [CHECK] Bot is authenticated! (verificación periódica)`);
+            console.log(`✅ [Bot ${this.businessId}] [CHECK] Client info:`, {
+              wid: clientInfo.wid,
+              pushname: clientInfo.pushname,
+            });
+            // Verificar si el event listener está activo
+            console.log(`✅ [Bot ${this.businessId}] [CHECK] Message event listeners should be active`);
+          } else {
+            console.log(`⏳ [Bot ${this.businessId}] [CHECK] Bot still not authenticated (verificación periódica)`);
+          }
+        } catch (err) {
+          console.log(`⏳ [Bot ${this.businessId}] [CHECK] Error checking client info:`, err.message);
+        }
+      }, 30000); // Verificar después de 30 segundos
       
       // Esperar un poco para que los eventos se disparen
       console.log(`⏳ [Bot ${this.businessId}] Waiting 3 seconds for events to fire...`);
