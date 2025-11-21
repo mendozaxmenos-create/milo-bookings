@@ -151,17 +151,31 @@ export class BookingBot {
       
       try {
         console.log(`🔄 [Bot ${this.businessId}] Calling messageHandler.handleMessage()...`);
-        await this.messageHandler.handleMessage(msg);
+        const handleResult = await this.messageHandler.handleMessage(msg);
         console.log(`✅ [Bot ${this.businessId}] Message handled successfully!`);
+        console.log(`✅ [Bot ${this.businessId}] Handle result:`, handleResult ? 'has result' : 'no result');
+        if (handleResult) {
+          console.log(`✅ [Bot ${this.businessId}] Handle result type:`, typeof handleResult);
+        }
       } catch (error) {
-        console.error(`❌ [Bot ${this.businessId}] Error handling message:`, error);
-        console.error(`❌ [Bot ${this.businessId}] Error message:`, error.message);
-        console.error(`❌ [Bot ${this.businessId}] Error stack:`, error.stack);
+        console.error(`❌ [Bot ${this.businessId}] ==========================================`);
+        console.error(`❌ [Bot ${this.businessId}] ERROR handling message:`);
+        console.error(`❌ [Bot ${this.businessId}] Error name:`, error?.name);
+        console.error(`❌ [Bot ${this.businessId}] Error message:`, error?.message);
+        console.error(`❌ [Bot ${this.businessId}] Error stack:`, error?.stack);
+        console.error(`❌ [Bot ${this.businessId}] ==========================================`);
+        
         // Intentar responder con un mensaje de error
         try {
-          await msg.reply('⚠️ Lo siento, ocurrió un error al procesar tu mensaje. Por favor intenta de nuevo.');
+          console.log(`🔄 [Bot ${this.businessId}] Attempting to send error message to user...`);
+          const errorReply = await msg.reply('⚠️ Lo siento, ocurrió un error al procesar tu mensaje. Por favor intenta de nuevo.');
+          console.log(`✅ [Bot ${this.businessId}] Error message sent successfully`);
+          console.log(`✅ [Bot ${this.businessId}] Error reply ID:`, errorReply?.id?.id || 'N/A');
         } catch (replyError) {
-          console.error(`❌ [Bot ${this.businessId}] Error sending error message:`, replyError);
+          console.error(`❌ [Bot ${this.businessId}] ❌❌❌ CRITICAL: Error sending error message:`, replyError);
+          console.error(`❌ [Bot ${this.businessId}] Reply error name:`, replyError?.name);
+          console.error(`❌ [Bot ${this.businessId}] Reply error message:`, replyError?.message);
+          console.error(`❌ [Bot ${this.businessId}] Reply error stack:`, replyError?.stack);
         }
       }
       console.log(`📨 [Bot ${this.businessId}] ==========================================`);

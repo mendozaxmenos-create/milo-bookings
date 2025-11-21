@@ -274,10 +274,27 @@ Escribe el número o el nombre de la opción que deseas.
 
       console.log(`[MessageHandler ${this.businessId}] Sending menu message...`);
       console.log(`[MessageHandler ${this.businessId}] Menu length: ${menu.length} characters`);
-      const response = await msg.reply(menu);
-      console.log(`[MessageHandler ${this.businessId}] ✅ Menu message sent successfully!`);
-      console.log(`[MessageHandler ${this.businessId}] Response ID: ${response?.id?.id || 'N/A'}`);
-      return response;
+      console.log(`[MessageHandler ${this.businessId}] Replying to: ${msg.from}`);
+      console.log(`[MessageHandler ${this.businessId}] Message object type:`, typeof msg);
+      console.log(`[MessageHandler ${this.businessId}] Message has reply method:`, typeof msg.reply === 'function');
+      
+      try {
+        const response = await msg.reply(menu);
+        console.log(`[MessageHandler ${this.businessId}] ✅ Menu message sent successfully!`);
+        console.log(`[MessageHandler ${this.businessId}] Response ID: ${response?.id?.id || 'N/A'}`);
+        console.log(`[MessageHandler ${this.businessId}] Response object:`, {
+          hasId: !!response?.id,
+          idValue: response?.id?.id || response?.id,
+          timestamp: response?.timestamp || 'N/A',
+        });
+        return response;
+      } catch (replyError) {
+        console.error(`[MessageHandler ${this.businessId}] ❌ ERROR sending menu message:`, replyError);
+        console.error(`[MessageHandler ${this.businessId}] Error name:`, replyError?.name);
+        console.error(`[MessageHandler ${this.businessId}] Error message:`, replyError?.message);
+        console.error(`[MessageHandler ${this.businessId}] Error stack:`, replyError?.stack);
+        throw replyError; // Re-throw para que se maneje en el catch del handleMessage
+      }
     } catch (error) {
       console.error(`[MessageHandler ${this.businessId}] ❌ Error in showMainMenu:`, error);
       console.error(`[MessageHandler ${this.businessId}] Error message:`, error.message);
