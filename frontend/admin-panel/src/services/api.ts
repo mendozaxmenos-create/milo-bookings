@@ -184,6 +184,7 @@ export interface Business {
   has_qr?: boolean;
   created_at: string;
   updated_at: string;
+  plan_type?: 'basic' | 'premium';
 }
 
 export interface BusinessListResponse {
@@ -209,6 +210,7 @@ export interface CreateBusinessRequest {
   owner_phone: string;
   is_active?: boolean;
   is_trial?: boolean;
+  plan_type?: 'basic' | 'premium';
 }
 
 export const getBusinesses = async (): Promise<BusinessListResponse> => {

@@ -126,6 +126,7 @@ router.post('/businesses', async (req, res) => {
       whatsapp_number: req.body.whatsapp_number,
       owner_phone: req.body.owner_phone,
       is_active: req.body.is_active,
+      plan_type: req.body.plan_type,
     });
     
     const { error, value } = validateBusiness(req.body);
@@ -261,6 +262,7 @@ router.put('/businesses/:id', async (req, res) => {
       whatsapp_number: req.body.whatsapp_number,
       name: req.body.name,
       phone: req.body.phone,
+      plan_type: req.body.plan_type,
     });
     
     // Validar datos primero

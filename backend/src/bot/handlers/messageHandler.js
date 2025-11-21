@@ -842,7 +842,8 @@ Escribe el número o el nombre de la opción que deseas.
       
       // Verificar si el negocio tiene habilitado el sistema de coseguro
       await this.reloadSettings();
-      const insuranceEnabled = this.settings?.insurance_enabled || false;
+      const planType = this.business?.plan_type || 'basic';
+      const insuranceEnabled = planType !== 'basic' && (this.settings?.insurance_enabled || false);
       
       if (insuranceEnabled) {
         // Si tiene coseguro habilitado, preguntar por obra social

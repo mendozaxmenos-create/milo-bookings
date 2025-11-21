@@ -23,6 +23,8 @@ export function AdminBusinesses() {
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [credentialsBusiness, setCredentialsBusiness] = useState<Business | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
+  const [planSelectionOverrides, setPlanSelectionOverrides] = useState<Record<string, 'basic' | 'premium'>>({});
+  const [planUpdatingId, setPlanUpdatingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
@@ -90,6 +92,29 @@ export function AdminBusinesses() {
     mutationFn: ({ id, data }: { id: string; data: Partial<CreateBusinessRequest> }) => updateBusiness(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
+    },
+  });
+
+  const updatePlanMutation = useMutation({
+    mutationFn: ({ id, plan_type }: { id: string; plan_type: 'basic' | 'premium' }) => updateBusiness(id, { plan_type }),
+    onMutate: (variables) => {
+      setPlanUpdatingId(variables.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
+    },
+    onError: (error) => {
+      console.error('[AdminBusinesses] Error actualizando plan:', error);
+    },
+    onSettled: (_data, _error, variables) => {
+      setPlanUpdatingId(null);
+      if (variables?.id) {
+        setPlanSelectionOverrides((prev) => {
+          const copy = { ...prev };
+          delete copy[variables.id];
+          return copy;
+        });
+      }
     },
   });
 
@@ -192,6 +217,61 @@ export function AdminBusinesses() {
     );
   };
 
+  const renderPlanBadge = (plan?: string) => {
+    const type = plan || 'basic';
+    const isPremium = type === 'premium';
+    return (
+      <span
+        style={{
+          padding: '0.25rem 0.5rem',
+          borderRadius: '4px',
+          backgroundColor: isPremium ? '#6f42c1' : '#0d6efd',
+          color: 'white',
+          fontSize: '0.75rem',
+          fontWeight: 600,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.25rem',
+        }}
+      >
+        {isPremium ? '⭐ Plan Premium' : '📦 Plan Básico'}
+      </span>
+    );
+  };
+
+  const handlePlanChange = (business: Business, newPlan: 'basic' | 'premium') => {
+    const currentPlan = business.plan_type || 'basic';
+    if (newPlan === currentPlan) {
+      setPlanSelectionOverrides((prev) => {
+        const copy = { ...prev };
+        delete copy[business.id];
+        return copy;
+      });
+      return;
+    }
+
+    const confirmMessage =
+      newPlan === 'premium'
+        ? `¿Deseas actualizar el negocio "${business.name}" al plan Premium? Obtendrá obras sociales y recursos múltiples.`
+        : `¿Deseas cambiar "${business.name}" al plan Básico? Se limitará a un solo servicio y se desactivarán funciones avanzadas.`;
+
+    if (!window.confirm(confirmMessage)) {
+      setPlanSelectionOverrides((prev) => {
+        const copy = { ...prev };
+        delete copy[business.id];
+        return copy;
+      });
+      return;
+    }
+
+    setPlanSelectionOverrides((prev) => ({
+      ...prev,
+      [business.id]: newPlan,
+    }));
+
+    updatePlanMutation.mutate({ id: business.id, plan_type: newPlan });
+  };
+
   if (isLoading) {
     return <div>Cargando negocios...</div>;
   }
@@ -257,6 +337,7 @@ export function AdminBusinesses() {
                       🎁 PRUEBA
                     </span>
                   )}
+                  {renderPlanBadge(business.plan_type)}
                   {!business.is_active && (
                     <span style={{ marginLeft: '0.5rem', color: '#6c757d', fontSize: '0.875rem' }}>
                       (Inactivo)
@@ -295,6 +376,29 @@ export function AdminBusinesses() {
                   </div>
                   <div>
                     <strong>Estado Bot:</strong> {getStatusBadge(business.bot_status)}
+                  </div>
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <strong>Plan:</strong>{' '}
+                    <select
+                      value={planSelectionOverrides[business.id] ?? business.plan_type ?? 'basic'}
+                      onChange={(e) => handlePlanChange(business, e.target.value as 'basic' | 'premium')}
+                      disabled={planUpdatingId === business.id && updatePlanMutation.isPending}
+                      style={{
+                        marginLeft: '0.5rem',
+                        padding: '0.35rem 0.75rem',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc',
+                        minWidth: '160px',
+                      }}
+                    >
+                      <option value="basic">Plan Básico</option>
+                      <option value="premium">Plan Premium</option>
+                    </select>
+                    {planUpdatingId === business.id && updatePlanMutation.isPending && (
+                      <span style={{ marginLeft: '0.5rem', color: '#6c757d', fontSize: '0.85rem' }}>
+                        Actualizando plan...
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -488,6 +592,7 @@ function CreateBusinessModal({
     owner_phone: '',
     is_active: true,
     is_trial: false,
+    plan_type: 'basic',
   });
   const [error, setError] = useState<string>('');
 
@@ -649,6 +754,30 @@ function CreateBusinessModal({
                 </div>
               </div>
             </label>
+          </div>
+          <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#fff8e1', borderRadius: '4px', border: '1px solid #ffe58f' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#a15c00' }}>
+              📦 Plan del negocio
+            </label>
+            <select
+              value={formData.plan_type || 'basic'}
+              onChange={(e) => setFormData({ ...formData, plan_type: e.target.value as 'basic' | 'premium' })}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '2px solid #ffa940',
+                borderRadius: '4px',
+                backgroundColor: 'white',
+                fontWeight: 'bold',
+              }}
+            >
+              <option value="basic">Plan Básico - 1 servicio con pago único</option>
+              <option value="premium">Plan Premium - Obras sociales y recursos múltiples</option>
+            </select>
+            <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#795548' }}>
+              El plan básico limita a un único servicio y desactiva módulos avanzados (obras sociales, múltiples recursos, recordatorios). 
+              El plan premium habilita todas las funciones.
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
             <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer' }}>

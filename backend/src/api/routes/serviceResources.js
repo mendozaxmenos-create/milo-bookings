@@ -1,6 +1,7 @@
 import express from 'express';
 import { ServiceResource } from '../../../database/models/ServiceResource.js';
 import { Service } from '../../../database/models/Service.js';
+import { Business } from '../../../database/models/Business.js';
 import { authenticateToken } from '../../utils/auth.js';
 import { sanitizeObject } from '../../utils/sanitize.js';
 
@@ -18,6 +19,11 @@ router.get('/service/:serviceId', async (req, res) => {
     const service = await Service.findById(serviceId);
     if (!service || service.business_id !== req.user.business_id) {
       return res.status(404).json({ error: 'Service not found' });
+    }
+
+    const business = await Business.findById(service.business_id);
+    if (!business || (business.plan_type || 'basic') === 'basic') {
+      return res.status(403).json({ error: 'Los recursos múltiples solo están disponibles para planes premium.' });
     }
 
     const includeInactive = req.query.includeInactive === 'true';
@@ -45,6 +51,11 @@ router.post('/', async (req, res) => {
     const service = await Service.findById(service_id);
     if (!service || service.business_id !== req.user.business_id) {
       return res.status(404).json({ error: 'Service not found' });
+    }
+
+    const business = await Business.findById(service.business_id);
+    if (!business || (business.plan_type || 'basic') === 'basic') {
+      return res.status(403).json({ error: 'Los recursos múltiples solo están disponibles para planes premium.' });
     }
 
     // Verificar si el servicio tiene recursos múltiples habilitados
@@ -84,6 +95,11 @@ router.put('/:id', async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
+    const business = await Business.findById(service.business_id);
+    if (!business || (business.plan_type || 'basic') === 'basic') {
+      return res.status(403).json({ error: 'Los recursos múltiples solo están disponibles para planes premium.' });
+    }
+
     const { name, display_order } = sanitizeObject(req.body, {
       name: 'string',
     });
@@ -114,6 +130,11 @@ router.delete('/:id', async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
+    const business = await Business.findById(service.business_id);
+    if (!business || (business.plan_type || 'basic') === 'basic') {
+      return res.status(403).json({ error: 'Los recursos múltiples solo están disponibles para planes premium.' });
+    }
+
     await ServiceResource.delete(req.params.id);
     res.json({ message: 'Resource deleted successfully' });
   } catch (error) {
@@ -134,6 +155,11 @@ router.patch('/:id/toggle', async (req, res) => {
     const service = await Service.findById(resource.service_id);
     if (!service || service.business_id !== req.user.business_id) {
       return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const business = await Business.findById(service.business_id);
+    if (!business || (business.plan_type || 'basic') === 'basic') {
+      return res.status(403).json({ error: 'Los recursos múltiples solo están disponibles para planes premium.' });
     }
 
     const updated = await ServiceResource.toggleActive(req.params.id);

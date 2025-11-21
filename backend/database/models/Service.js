@@ -76,5 +76,13 @@ export class Service {
       });
     return this.findById(id);
   }
+
+  static async countByBusiness(businessId) {
+    const result = await db('services')
+      .where({ business_id: businessId })
+      .count('* as count')
+      .first();
+    return parseInt(result?.count || 0, 10);
+  }
 }
 

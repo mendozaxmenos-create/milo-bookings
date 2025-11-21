@@ -1,5 +1,6 @@
 import express from 'express';
 import { InsuranceProvider } from '../../../database/models/InsuranceProvider.js';
+import { Business } from '../../../database/models/Business.js';
 import { authenticateToken } from '../../utils/auth.js';
 
 const router = express.Router();
@@ -7,9 +8,27 @@ const router = express.Router();
 // Todas las rutas requieren autenticación
 router.use(authenticateToken);
 
+async function ensurePremiumPlan(req, res) {
+  const business = await Business.findById(req.user.business_id);
+  if (!business) {
+    res.status(404).json({ error: 'Business not found' });
+    return null;
+  }
+
+  if ((business.plan_type || 'basic') !== 'premium') {
+    res.status(403).json({ error: 'El módulo de obras sociales es exclusivo de los planes premium.' });
+    return null;
+  }
+
+  return business;
+}
+
 // Listar obras sociales del negocio
 router.get('/', async (req, res) => {
   try {
+    const business = await ensurePremiumPlan(req, res);
+    if (!business) return;
+
     const includeInactive = req.query.include_inactive === 'true';
     const providers = await InsuranceProvider.findByBusiness(req.user.business_id, includeInactive);
     res.json({ data: providers });
@@ -22,6 +41,9 @@ router.get('/', async (req, res) => {
 // Obtener obra social por ID
 router.get('/:id', async (req, res) => {
   try {
+    const business = await ensurePremiumPlan(req, res);
+    if (!business) return;
+
     const provider = await InsuranceProvider.findById(req.params.id);
     
     if (!provider) {
@@ -43,6 +65,9 @@ router.get('/:id', async (req, res) => {
 // Crear obra social
 router.post('/', async (req, res) => {
   try {
+    const business = await ensurePremiumPlan(req, res);
+    if (!business) return;
+
     const { name, copay_amount, display_order, is_active } = req.body;
 
     if (!name || copay_amount === undefined) {
@@ -67,6 +92,9 @@ router.post('/', async (req, res) => {
 // Actualizar obra social
 router.put('/:id', async (req, res) => {
   try {
+    const business = await ensurePremiumPlan(req, res);
+    if (!business) return;
+
     const provider = await InsuranceProvider.findById(req.params.id);
     
     if (!provider) {
@@ -97,6 +125,9 @@ router.put('/:id', async (req, res) => {
 // Eliminar obra social
 router.delete('/:id', async (req, res) => {
   try {
+    const business = await ensurePremiumPlan(req, res);
+    if (!business) return;
+
     const provider = await InsuranceProvider.findById(req.params.id);
     
     if (!provider) {
@@ -119,6 +150,9 @@ router.delete('/:id', async (req, res) => {
 // Activar/Desactivar obra social
 router.patch('/:id/toggle', async (req, res) => {
   try {
+    const business = await ensurePremiumPlan(req, res);
+    if (!business) return;
+
     const provider = await InsuranceProvider.findById(req.params.id);
     
     if (!provider) {

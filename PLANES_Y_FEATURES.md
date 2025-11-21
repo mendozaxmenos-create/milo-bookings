@@ -18,6 +18,7 @@ Basado en análisis de competidores como **Calendly**, **Acuity Scheduling**, **
 - ✅ Dashboard con estadísticas básicas
 - ✅ Personalización de mensajes del bot
 - ✅ Integración con MercadoPago (pago único)
+- ✅ 1 servicio/producto activo con cobro obligatorio (precio configurable)
 - ✅ Hasta 1 ubicación/sucursal
 - ✅ Hasta 50 reservas/mes
 
@@ -55,6 +56,8 @@ Basado en análisis de competidores como **Calendly**, **Acuity Scheduling**, **
 ## 💎 PLAN PREMIUM (El más alto - $99-149/mes)
 
 ### Todas las features de Plan Intermedio +
+- ✅ Módulo de obras sociales y copagos configurables por aseguradora
+- ✅ Servicios con múltiples recursos simultáneos (canchas, cabinas, boxes)
 
 #### 1. 🔔 **Notificaciones Push en Navegador**
 - Notificaciones push del navegador cuando hay nuevas reservas
