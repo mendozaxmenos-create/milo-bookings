@@ -318,22 +318,26 @@ router.put('/businesses/:id', async (req, res) => {
       }
       
       // Inicializar bot en segundo plano (no bloquea la respuesta)
+      // Usar el número del business actualizado (después de Business.update) para asegurar que es el correcto
+      const newWhatsAppNumber = business.whatsapp_number || value.whatsapp_number;
       console.log(`[Admin] ==========================================`);
       console.log(`[Admin] 🔄 INICIANDO REINICIALIZACIÓN DEL BOT`);
       console.log(`[Admin] Negocio: ${business.name} (${business.id})`);
       console.log(`[Admin] Número viejo: ${currentBusiness.whatsapp_number}`);
-      console.log(`[Admin] Número nuevo: ${value.whatsapp_number}`);
+      console.log(`[Admin] Número nuevo (del body): ${value.whatsapp_number}`);
+      console.log(`[Admin] Número nuevo (del business actualizado): ${business.whatsapp_number}`);
+      console.log(`[Admin] Usando número: ${newWhatsAppNumber}`);
       console.log(`[Admin] ==========================================`);
       
       // Agregar bot a activeBots ANTES de inicializar (como en index.js)
-      const bot = new BookingBot(business.id, value.whatsapp_number);
+      const bot = new BookingBot(business.id, newWhatsAppNumber);
       activeBots.set(business.id, bot);
       console.log(`[Admin] ✅ Bot agregado a activeBots antes de inicializar`);
       
       // Inicializar en segundo plano (no bloquea la respuesta)
       (async () => {
         try {
-          console.log(`[Admin] Inicializando bot con nuevo número ${value.whatsapp_number} para ${business.name}...`);
+          console.log(`[Admin] Inicializando bot con nuevo número ${newWhatsAppNumber} para ${business.name}...`);
           await bot.initialize();
           console.log(`[Admin] ✅ Bot reinicializado correctamente para ${business.name}`);
           console.log(`[Admin] Bot debería generar QR en unos segundos...`);
