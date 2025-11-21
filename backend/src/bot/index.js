@@ -277,23 +277,6 @@ export class BookingBot {
     
     // No esperar nada - retornar inmediatamente
     return;
-    
-    // El código de abajo NO se ejecutará debido al return
-    // Se dejó comentado para referencia
-    /* Código antiguo que esperaba la inicialización:
-    try {
-      await this.client.initialize();
-      await this.messageHandler.initialize();
-      ...
-    } catch (error) {
-      ...
-    }
-    */
-      console.error(`❌ [Bot ${this.businessId}] Error during initialization:`, error);
-      console.error(`❌ [Bot ${this.businessId}] Error message:`, error.message);
-      console.error(`❌ [Bot ${this.businessId}] Error stack:`, error.stack);
-      throw error;
-    }
   }
 
   async disconnect() {
@@ -317,7 +300,6 @@ export class BookingBot {
       // Eliminar directorio de sesión
       const sessionPath = this.sessionStorage.getLocalAuthPath();
       const fs = await import('fs/promises');
-      const path = await import('path');
       
       try {
         await fs.rm(sessionPath, { recursive: true, force: true });
@@ -340,10 +322,6 @@ export class BookingBot {
       console.error('Error sending message:', error);
       throw error;
     }
-  }
-
-  async disconnect() {
-    await this.client.destroy();
   }
 
   async sendQRToWebhook(qr) {
