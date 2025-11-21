@@ -259,6 +259,10 @@ router.put('/businesses/:id', async (req, res) => {
       return res.status(404).json({ error: 'Business not found' });
     }
     
+    // Verificar si se está actualizando el whatsapp_number
+    const isUpdatingWhatsApp = value.whatsapp_number !== undefined;
+    const whatsappChanged = isUpdatingWhatsApp && value.whatsapp_number !== currentBusiness.whatsapp_number;
+    
     console.log(`[Admin] Negocio actual:`, {
       id: currentBusiness.id,
       name: currentBusiness.name,
@@ -287,7 +291,7 @@ router.put('/businesses/:id', async (req, res) => {
     });
     
     // Si cambió el whatsapp_number, reinicializar bot en segundo plano
-    if (value.whatsapp_number && value.whatsapp_number !== currentBusiness.whatsapp_number) {
+    if (whatsappChanged) {
       console.log(`[Admin] 🔄 Número de WhatsApp cambió: ${currentBusiness.whatsapp_number} -> ${value.whatsapp_number}`);
       const existingBot = activeBots.get(business.id);
       if (existingBot) {
@@ -318,7 +322,7 @@ router.put('/businesses/:id', async (req, res) => {
           console.error(`[Admin] Error stack:`, err.stack);
         }
       })();
-    } else if (value.whatsapp_number && value.whatsapp_number === currentBusiness.whatsapp_number) {
+    } else if (isUpdatingWhatsApp && !whatsappChanged) {
       console.log(`[Admin] ℹ️ Número de WhatsApp no cambió (${value.whatsapp_number}), no es necesario reinicializar el bot`);
     }
     
