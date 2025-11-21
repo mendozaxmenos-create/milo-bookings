@@ -78,15 +78,29 @@ export class BookingBot {
     });
 
     this.client.on('ready', async () => {
+      console.log(`✅ [Bot ${this.businessId}] ==========================================`);
       console.log(`✅ [Bot ${this.businessId}] Bot ready and authenticated!`);
+      console.log(`✅ [Bot ${this.businessId}] Bot is NOW ready to receive messages!`);
       console.log(`✅ [Bot ${this.businessId}] Client info:`, {
         wid: this.client.info?.wid,
         pushname: this.client.info?.pushname,
         platform: this.client.info?.platform,
       });
+      console.log(`✅ [Bot ${this.businessId}] Message handlers are active!`);
+      console.log(`✅ [Bot ${this.businessId}] ==========================================`);
+      
+      // Asegurar que el message handler esté inicializado
+      try {
+        await this.messageHandler.initialize();
+        console.log(`✅ [Bot ${this.businessId}] Message handler initialized in ready event`);
+      } catch (err) {
+        console.error(`❌ [Bot ${this.businessId}] Error initializing message handler in ready:`, err);
+      }
+      
       // Limpiar QR cuando el bot está listo
       const { deleteQRCode } = await import('../services/qrStorage.js');
       deleteQRCode(this.businessId);
+      console.log(`🗑️ [Bot ${this.businessId}] QR code deleted (bot ready)`);
     });
 
     this.client.on('authenticated', () => {
@@ -113,18 +127,44 @@ export class BookingBot {
     });
 
     this.client.on('message', async (msg) => {
-      console.log(`📨 [Bot ${this.businessId}] Message received from ${msg.from}`);
-      console.log(`📨 [Bot ${this.businessId}] Message body: "${msg.body?.substring(0, 100)}"`);
-      console.log(`📨 [Bot ${this.businessId}] Message type: ${msg.type}`);
+      console.log(`📨 [Bot ${this.businessId}] ==========================================`);
+      console.log(`📨 [Bot ${this.businessId}] MESSAGE RECEIVED!`);
+      console.log(`📨 [Bot ${this.businessId}] From: ${msg.from}`);
+      console.log(`📨 [Bot ${this.businessId}] Body: "${msg.body?.substring(0, 100)}"`);
+      console.log(`📨 [Bot ${this.businessId}] Type: ${msg.type}`);
       console.log(`📨 [Bot ${this.businessId}] Is from me: ${msg.fromMe}`);
       console.log(`📨 [Bot ${this.businessId}] Is status: ${msg.isStatus}`);
+      console.log(`📨 [Bot ${this.businessId}] Is group: ${msg.from.includes('@g.us')}`);
+      console.log(`📨 [Bot ${this.businessId}] Timestamp: ${new Date().toISOString()}`);
+      
+      // Verificar si el bot está listo
       try {
+        const clientInfo = this.client.info;
+        if (!clientInfo) {
+          console.warn(`⚠️ [Bot ${this.businessId}] WARNING: Client info not available, bot may not be ready!`);
+        } else {
+          console.log(`✅ [Bot ${this.businessId}] Bot is ready, processing message...`);
+        }
+      } catch (err) {
+        console.warn(`⚠️ [Bot ${this.businessId}] WARNING: Could not check client info:`, err.message);
+      }
+      
+      try {
+        console.log(`🔄 [Bot ${this.businessId}] Calling messageHandler.handleMessage()...`);
         await this.messageHandler.handleMessage(msg);
-        console.log(`✅ [Bot ${this.businessId}] Message handled successfully`);
+        console.log(`✅ [Bot ${this.businessId}] Message handled successfully!`);
       } catch (error) {
         console.error(`❌ [Bot ${this.businessId}] Error handling message:`, error);
+        console.error(`❌ [Bot ${this.businessId}] Error message:`, error.message);
         console.error(`❌ [Bot ${this.businessId}] Error stack:`, error.stack);
+        // Intentar responder con un mensaje de error
+        try {
+          await msg.reply('⚠️ Lo siento, ocurrió un error al procesar tu mensaje. Por favor intenta de nuevo.');
+        } catch (replyError) {
+          console.error(`❌ [Bot ${this.businessId}] Error sending error message:`, replyError);
+        }
       }
+      console.log(`📨 [Bot ${this.businessId}] ==========================================`);
     });
 
     try {

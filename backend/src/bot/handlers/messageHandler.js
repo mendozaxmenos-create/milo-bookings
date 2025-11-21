@@ -153,13 +153,23 @@ export class MessageHandler {
 
   async handleMessage(msg) {
     try {
+      console.log(`[MessageHandler ${this.businessId}] ==========================================`);
+      console.log(`[MessageHandler ${this.businessId}] Processing message...`);
+      
       // Ignorar mensajes de grupos y estados
-      if (msg.from.includes('@g.us') || msg.isStatus) {
+      if (msg.from.includes('@g.us')) {
+        console.log(`[MessageHandler ${this.businessId}] Ignoring group message from ${msg.from}`);
+        return;
+      }
+      
+      if (msg.isStatus) {
+        console.log(`[MessageHandler ${this.businessId}] Ignoring status update`);
         return;
       }
 
       // Ignorar mensajes propios
       if (msg.fromMe) {
+        console.log(`[MessageHandler ${this.businessId}] Ignoring own message`);
         return;
       }
 
@@ -167,19 +177,30 @@ export class MessageHandler {
       const body = msg.body?.toLowerCase().trim() || '';
       const userId = from.split('@')[0];
 
-      console.log(`[MessageHandler] Received message from ${userId}: "${body}"`);
+      console.log(`[MessageHandler ${this.businessId}] Message from ${userId}: "${body}"`);
+      console.log(`[MessageHandler ${this.businessId}] Full from: ${from}`);
+
+      // Verificar que tenemos settings cargados
+      if (!this.settings) {
+        console.log(`[MessageHandler ${this.businessId}] Settings not loaded, reloading...`);
+        await this.reloadSettings();
+      }
 
       // Obtener estado del usuario
       const userState = this.userState.get(userId) || { step: 'menu' };
+      console.log(`[MessageHandler ${this.businessId}] User state:`, userState);
 
       // Comandos rápidos
       if (body === 'menu' || body === 'inicio' || body === 'start') {
+        console.log(`[MessageHandler ${this.businessId}] Quick command detected: menu/inicio/start`);
         await this.showMainMenu(msg);
         this.userState.set(userId, { step: 'menu' });
+        console.log(`[MessageHandler ${this.businessId}] Main menu sent`);
         return;
       }
 
       // Navegación según estado
+      console.log(`[MessageHandler ${this.businessId}] Handling state: ${userState.step}`);
       switch (userState.step) {
         case 'menu':
           await this.handleMenuSelection(msg, body, userId);
@@ -207,11 +228,20 @@ export class MessageHandler {
           await this.handleBookingConfirmation(msg, body, userId);
           break;
         default:
+          console.log(`[MessageHandler ${this.businessId}] Unknown state, showing main menu`);
           await this.showMainMenu(msg);
       }
+      console.log(`[MessageHandler ${this.businessId}] Message processing complete`);
+      console.log(`[MessageHandler ${this.businessId}] ==========================================`);
     } catch (error) {
-      console.error('Error handling message:', error);
-      await msg.reply('Lo siento, ocurrió un error. Por favor intenta de nuevo.');
+      console.error(`[MessageHandler ${this.businessId}] ❌ Error handling message:`, error);
+      console.error(`[MessageHandler ${this.businessId}] Error message:`, error.message);
+      console.error(`[MessageHandler ${this.businessId}] Error stack:`, error.stack);
+      try {
+        await msg.reply('⚠️ Lo siento, ocurrió un error. Por favor intenta de nuevo o escribe "menu" para comenzar.');
+      } catch (replyError) {
+        console.error(`[MessageHandler ${this.businessId}] ❌ Error sending error reply:`, replyError);
+      }
     }
   }
 
