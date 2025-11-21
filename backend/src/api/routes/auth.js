@@ -109,6 +109,21 @@ router.post('/login', loginLimiter, async (req, res, next) => {
       console.log(`[Auth] ❌ Usuario no encontrado`);
       console.log(`[Auth] Intentó buscar con business_id: "${business_id}" y phone: "${phone}"`);
       
+      // Buscar todos los usuarios del negocio para dar sugerencias
+      try {
+        const allUsers = await BusinessUser.listByBusiness(business_id);
+        if (allUsers && allUsers.length > 0) {
+          console.log(`[Auth] 💡 Usuarios encontrados para este negocio:`);
+          allUsers.forEach(user => {
+            console.log(`[Auth]   - User ID: ${user.id}, Phone: "${user.phone}", Role: ${user.role}`);
+          });
+          const firstUser = allUsers[0];
+          console.log(`[Auth] 💡 SUGERENCIA: Intenta usar el teléfono "${firstUser.phone}"`);
+        }
+      } catch (err) {
+        console.log(`[Auth] Error al buscar usuarios del negocio:`, err.message);
+      }
+      
       // Intentar con diferentes formatos de teléfono
       const phoneVariants = [
         phone,
@@ -132,7 +147,7 @@ router.post('/login', loginLimiter, async (req, res, next) => {
       }
       
       authLogger.warn('Business user not found', { business_id, phone, ip: req.ip || req.connection.remoteAddress });
-      return res.status(401).json({ error: 'Invalid credentials', details: 'User not found. Please check business_id and phone number.' });
+      return res.status(401).json({ error: 'Invalid credentials', details: 'User not found. Please check business_id and phone number. The phone number must match exactly the one used when creating the business.' });
     }
 
     console.log(`[Auth] ✅ Usuario encontrado: ${user.id}`);
