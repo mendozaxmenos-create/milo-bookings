@@ -57,14 +57,22 @@ export class BookingBot {
     
     // Setup de eventos
     this.client.on('qr', (qr) => {
-      console.log(`\n📱 [Bot ${this.businessId}] QR Code generated:`);
-      console.log(`📱 [Bot ${this.businessId}] Escanea este código QR con WhatsApp para conectar el bot\n`);
+      console.log(`\n📱 [Bot ${this.businessId}] ==========================================`);
+      console.log(`📱 [Bot ${this.businessId}] 🔔 QR CODE GENERATED!`);
+      console.log(`📱 [Bot ${this.businessId}] Timestamp: ${new Date().toISOString()}`);
       console.log(`📱 [Bot ${this.businessId}] QR length: ${qr.length} characters`);
-      console.log(`📱 [Bot ${this.businessId}] Timestamp: ${new Date().toISOString()}\n`);
+      console.log(`📱 [Bot ${this.businessId}] QR preview: ${qr.substring(0, 50)}...`);
+      console.log(`📱 [Bot ${this.businessId}] Escanea este código QR con WhatsApp para conectar el bot`);
+      console.log(`📱 [Bot ${this.businessId}] ==========================================\n`);
       
-      // Guardar QR code para acceso via API
+      // Eliminar QR anterior si existe (por si acaso)
+      const { deleteQRCode } = await import('../services/qrStorage.js');
+      deleteQRCode(this.businessId);
+      
+      // Guardar QR code nuevo para acceso via API
       saveQRCode(this.businessId, qr);
-      console.log(`💾 [Bot ${this.businessId}] QR code saved to storage`);
+      console.log(`💾 [Bot ${this.businessId}] ✅ QR code guardado en storage`);
+      console.log(`💾 [Bot ${this.businessId}] QR expira en ~5 minutos`);
       
       // En producción, también podemos enviar el QR a un webhook o almacenarlo
       if (process.env.QR_WEBHOOK_URL) {

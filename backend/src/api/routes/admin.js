@@ -458,47 +458,79 @@ router.get('/businesses/:id/qr', async (req, res) => {
  */
 router.post('/businesses/:id/reconnect-bot', async (req, res) => {
   try {
+    console.log(`[Reconnect] ==========================================`);
+    console.log(`[Reconnect] Solicitud de reconexión para negocio ${req.params.id}`);
+    
     const business = await Business.findById(req.params.id);
     
     if (!business) {
+      console.log(`[Reconnect] ❌ Negocio ${req.params.id} no encontrado`);
       return res.status(404).json({ error: 'Business not found' });
     }
     
     if (!business.whatsapp_number) {
+      console.log(`[Reconnect] ❌ Negocio ${business.id} no tiene WhatsApp configurado`);
       return res.status(400).json({ error: 'Business does not have a WhatsApp number configured' });
     }
+    
+    // Eliminar QR anterior ANTES de reconectar
+    const { deleteQRCode } = await import('../../services/qrStorage.js');
+    console.log(`[Reconnect] Eliminando QR anterior para ${business.id}...`);
+    deleteQRCode(business.id);
+    console.log(`[Reconnect] ✅ QR anterior eliminado`);
     
     // Desconectar bot existente si hay uno y eliminar sesión guardada
     const existingBot = activeBots.get(req.params.id);
     if (existingBot) {
       try {
+        console.log(`[Reconnect] Desconectando bot existente para ${business.id}...`);
         // Eliminar sesión guardada para forzar nueva autenticación y generar QR
         await existingBot.clearSession();
+        console.log(`[Reconnect] ✅ Sesión del bot anterior limpiada`);
       } catch (disconnectErr) {
-        console.warn('Error desconectando/limpiando bot existente:', disconnectErr);
+        console.warn(`[Reconnect] ⚠️ Error desconectando/limpiando bot existente:`, disconnectErr.message);
       }
       activeBots.delete(req.params.id);
+      console.log(`[Reconnect] ✅ Bot anterior eliminado de activeBots`);
     } else {
       // Si no hay bot activo, crear uno temporal solo para limpiar la sesión
       try {
+        console.log(`[Reconnect] No hay bot activo, limpiando sesión guardada directamente...`);
         const tempBot = new BookingBot(business.id, business.whatsapp_number);
         await tempBot.clearSession();
+        console.log(`[Reconnect] ✅ Sesión guardada limpiada`);
       } catch (clearErr) {
-        console.warn('Error limpiando sesión guardada:', clearErr);
+        console.warn(`[Reconnect] ⚠️ Error limpiando sesión guardada:`, clearErr.message);
       }
     }
     
+    // Esperar un poco para asegurar que la limpieza se completó
+    console.log(`[Reconnect] Esperando 2 segundos para que la limpieza se complete...`);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
     // Reinicializar bot
     try {
+      console.log(`[Reconnect] Creando nuevo bot para ${business.id}...`);
       // Crear nuevo bot e inicializar (sin sesión guardada, generará QR)
       const bot = new BookingBot(business.id, business.whatsapp_number);
+      
+      // Agregar bot a activeBots ANTES de inicializar
+      activeBots.set(business.id, bot);
+      console.log(`[Reconnect] ✅ Bot agregado a activeBots antes de inicializar`);
+      
       // Inicializar en segundo plano para no bloquear la respuesta
+      console.log(`[Reconnect] Inicializando bot en segundo plano...`);
       bot.initialize().then(() => {
-        activeBots.set(business.id, bot);
-        console.log(`✅ Bot reconectado para negocio: ${business.name} (${business.id})`);
+        console.log(`[Reconnect] ✅ Bot inicializado correctamente para: ${business.name} (${business.id})`);
+        console.log(`[Reconnect] 🔍 Esperando que se genere nuevo QR...`);
       }).catch(err => {
-        console.error(`Error inicializando bot después de reconectar:`, err);
+        console.error(`[Reconnect] ❌ Error inicializando bot después de reconectar:`, err.message);
+        console.error(`[Reconnect] Error stack:`, err.stack);
+        // No eliminar de activeBots, el bot puede seguir inicializándose en segundo plano
       });
+      
+      console.log(`[Reconnect] ✅ Proceso de reconexión iniciado`);
+      console.log(`[Reconnect] ==========================================`);
       
       // Responder inmediatamente
       res.json({
