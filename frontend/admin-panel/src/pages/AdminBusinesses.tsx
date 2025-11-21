@@ -413,19 +413,38 @@ export function AdminBusinesses() {
                 onSuccess: async (response) => {
                   console.log('[AdminBusinesses] Actualización exitosa:', response);
                   // Invalidar la query para refrescar los datos del negocio
+                  // React Query automáticamente hará refetch cuando los datos estén listos
                   await queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
-                  // Refetch para obtener los datos actualizados inmediatamente
-                  const refetchedData = await queryClient.refetchQueries({ queryKey: ['admin-businesses'] });
-                  // Actualizar credentialsBusiness con los datos nuevos
-                  if (refetchedData.data?.data) {
-                    const updatedBusiness = refetchedData.data.data.find((b: Business) => b.id === businessId);
-                    if (updatedBusiness) {
-                      console.log('[AdminBusinesses] Actualizando credentialsBusiness con datos nuevos:', {
-                        old: credentialsBusiness.whatsapp_number,
-                        new: updatedBusiness.whatsapp_number,
-                      });
-                      setCredentialsBusiness(updatedBusiness);
+                  // Hacer refetch inmediatamente y esperar los resultados
+                  try {
+                    const refetchResult = await queryClient.refetchQueries({ 
+                      queryKey: ['admin-businesses'],
+                      exact: true,
+                    });
+                    
+                    // refetchQueries retorna un array de QueryObserverResult
+                    // Buscar el resultado que tenga los datos
+                    if (Array.isArray(refetchResult)) {
+                      for (const result of refetchResult) {
+                        if (result?.data && typeof result.data === 'object' && 'data' in result.data) {
+                          const businessesData = (result.data as { data: Business[] }).data;
+                          if (Array.isArray(businessesData)) {
+                            const updatedBusiness = businessesData.find((b: Business) => b.id === businessId);
+                            if (updatedBusiness) {
+                              console.log('[AdminBusinesses] Actualizando credentialsBusiness con datos nuevos:', {
+                                old: credentialsBusiness.whatsapp_number,
+                                new: updatedBusiness.whatsapp_number,
+                              });
+                              setCredentialsBusiness(updatedBusiness);
+                              break;
+                            }
+                          }
+                        }
+                      }
                     }
+                  } catch (error) {
+                    console.error('[AdminBusinesses] Error al refetch:', error);
+                    // Si falla el refetch, invalidar igualmente para que se refresque automáticamente
                   }
                 },
                 onError: (error) => {
