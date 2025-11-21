@@ -226,13 +226,9 @@ SESSION_STORAGE_TYPE=local
 SESSION_STORAGE_PATH=/app/backend/data/whatsapp-sessions
 
 # ============================================
-# Servicios opcionales / Cronjobs
+# Backups automáticos (solo producción + planes premium)
 # ============================================
-# Coloca "false" para desactivar y reducir consumo de memoria
-ENABLE_TRIAL_SERVICE=true
-ENABLE_REMINDERS=true
-ENABLE_BACKUPS=true
-BACKUP_HOUR=2  # Hora del día (0-23) para ejecutar backups diarios (requiere ENABLE_BACKUPS=true)
+BACKUP_HOUR=2  # Hora del día (0-23) para ejecutar backups diarios
 
 # ============================================
 # Logging (Opcional)

@@ -162,23 +162,24 @@ app.listen(PORT, '0.0.0.0', async () => {
     console.error('[Init] ERROR inicializando bots:', error);
   }
   
-  const enableTrials = process.env.ENABLE_TRIAL_SERVICE !== 'false';
-  const enableReminders = process.env.ENABLE_REMINDERS !== 'false';
-  const enableBackups = process.env.ENABLE_BACKUPS !== 'false';
-  
-  if (enableTrials) {
-    startTrialChecker();
-  } else {
-    console.log('[Init] ⏸️ Servicio de verificación de trials deshabilitado por configuración');
-  }
-  
-  if (enableReminders) {
-    startReminderService();
-  } else {
-    console.log('[Init] ⏸️ Servicio de recordatorios deshabilitado por configuración');
+  startTrialChecker();
+
+  let hasPremiumBusinesses = false;
+  try {
+    const businesses = await Business.findAllActive();
+    hasPremiumBusinesses = businesses.some((b) => (b.plan_type || 'basic') === 'premium');
+    console.log(`[Init] Plan premium detectado: ${hasPremiumBusinesses}`);
+  } catch (error) {
+    console.warn('[Init] ⚠️ No se pudo verificar si hay negocios premium:', error.message);
   }
 
-  if (enableBackups && process.env.DATABASE_URL && process.env.NODE_ENV === 'production') {
+  if (hasPremiumBusinesses) {
+    startReminderService();
+  } else {
+    console.log('[Init] ⏸️ Servicio de recordatorios deshabilitado (solo para negocios premium)');
+  }
+
+  if (hasPremiumBusinesses && process.env.DATABASE_URL && process.env.NODE_ENV === 'production') {
     const backupHour = parseInt(process.env.BACKUP_HOUR || '2', 10); // Default: 2 AM
     try {
       startBackupService(backupHour);
@@ -187,8 +188,6 @@ app.listen(PORT, '0.0.0.0', async () => {
       console.error('[Init] ⚠️ Error iniciando servicio de backup:', error.message);
       console.error('[Init] El servidor continuará sin backups automáticos');
     }
-  } else if (!enableBackups) {
-    console.log('[Init] ⏸️ Servicio de backups automáticos deshabilitado por configuración');
   } else {
     console.log('[Init] ⚠️ Backup automático deshabilitado (solo disponible en producción con DATABASE_URL)');
   }
