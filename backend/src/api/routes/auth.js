@@ -96,24 +96,65 @@ router.post('/login', loginLimiter, async (req, res, next) => {
       return res.status(400).json({ error: 'business_id and phone are required for business users' });
     }
 
+    console.log(`[Auth] 🔍 Buscando usuario de negocio...`);
+    console.log(`[Auth] Business ID: "${business_id}"`);
+    console.log(`[Auth] Phone: "${phone}"`);
+    console.log(`[Auth] Phone length: ${phone?.length || 0}`);
+    console.log(`[Auth] Password length: ${password?.length || 0}`);
+    
     authLogger.debug('Looking for business user', { business_id, phone });
     const user = await BusinessUser.findByBusinessAndPhone(business_id, phone);
+    
     if (!user) {
+      console.log(`[Auth] ❌ Usuario no encontrado`);
+      console.log(`[Auth] Intentó buscar con business_id: "${business_id}" y phone: "${phone}"`);
+      
+      // Intentar con diferentes formatos de teléfono
+      const phoneVariants = [
+        phone,
+        phone?.replace(/\s+/g, ''),
+        phone?.startsWith('+') ? phone : `+${phone}`,
+        phone?.startsWith('+') ? phone.substring(1) : phone,
+      ].filter(Boolean);
+      
+      console.log(`[Auth] Variantes de teléfono intentadas:`, phoneVariants);
+      
+      // Intentar buscar con cada variante
+      for (const phoneVariant of phoneVariants) {
+        if (phoneVariant !== phone) {
+          const altUser = await BusinessUser.findByBusinessAndPhone(business_id, phoneVariant);
+          if (altUser) {
+            console.log(`[Auth] ⚠️ Usuario encontrado con variante de teléfono: "${phoneVariant}"`);
+            console.log(`[Auth] 💡 SUGERENCIA: Usar teléfono "${altUser.phone}" para login`);
+            break;
+          }
+        }
+      }
+      
       authLogger.warn('Business user not found', { business_id, phone, ip: req.ip || req.connection.remoteAddress });
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid credentials', details: 'User not found. Please check business_id and phone number.' });
     }
 
+    console.log(`[Auth] ✅ Usuario encontrado: ${user.id}`);
+    console.log(`[Auth] Usuario phone en BD: "${user.phone}"`);
+    console.log(`[Auth] Usuario business_id en BD: "${user.business_id}"`);
+    
     authLogger.debug('Business user found, verifying password');
     const isValid = await BusinessUser.verifyPassword(user, password);
+    
     if (!isValid) {
+      console.log(`[Auth] ❌ Contraseña incorrecta`);
+      console.log(`[Auth] Contraseña recibida length: ${password?.length || 0}`);
       authLogger.warn('Invalid password for business user', {
         business_id,
         phone,
         userId: user.id,
         ip: req.ip || req.connection.remoteAddress,
       });
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid credentials', details: 'Password is incorrect. Default password is "changeme123".' });
     }
+    
+    console.log(`[Auth] ✅ Contraseña válida!`);
 
     authLogger.info('Login successful', {
       userId: user.id,
