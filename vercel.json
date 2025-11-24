@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "buildCommand": "cd frontend/admin-panel && npm install && npm run build",
+  "outputDirectory": "frontend/admin-panel/dist",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/([a-z0-9-]+)",
+      "destination": "/api/shortlink?slug=$1",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?!.*bot).*"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+

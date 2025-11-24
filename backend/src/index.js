@@ -80,6 +80,20 @@ async function checkAndSeed() {
 // Función para inicializar bots de todos los negocios activos
 async function initializeBots() {
   try {
+    // Verificar si se debe usar Meta WhatsApp Business API en lugar de whatsapp-web.js
+    const USE_META_API = process.env.USE_META_WHATSAPP_API === 'true' || 
+                         process.env.DISABLE_WHATSAPP_BOTS === 'true';
+    
+    if (USE_META_API) {
+      console.log('='.repeat(60));
+      console.log('📱 [Init] ⚠️  Meta WhatsApp Business API está habilitada');
+      console.log('📱 [Init] ⚠️  Los bots de whatsapp-web.js están DESACTIVADOS');
+      console.log('📱 [Init] ✅ Los bots ahora se manejan en Vercel Serverless Functions');
+      console.log('📱 [Init] 💾 Esto libera memoria en Render (no más Puppeteer)');
+      console.log('='.repeat(60));
+      return;
+    }
+    
     // Obtener todos los negocios activos
     const businesses = await Business.findAllActive();
     
@@ -91,6 +105,8 @@ async function initializeBots() {
       is_active: b.is_active
     })));
     console.log(`📱 [Init] Inicializando ${businesses.length} bot(s) de WhatsApp...`);
+    console.log(`📱 [Init] ⚠️  Usando whatsapp-web.js (consume mucha memoria)`);
+    console.log(`📱 [Init] 💡 Para usar Meta API, configura: USE_META_WHATSAPP_API=true`);
     
     for (const business of businesses) {
       if (business.whatsapp_number) {
