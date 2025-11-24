@@ -7,10 +7,16 @@
     {
       "source": "/api/(.*)",
       "destination": "/api/$1"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
     },
     {
-      "source": "/([a-z0-9-]+)",
-      "destination": "/api/shortlink?slug=$1",
+      "src": "/([a-z0-9-]+)",
+      "dest": "/api/shortlink?slug=$1",
       "has": [
         {
           "type": "header",
@@ -20,8 +26,8 @@
       ]
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
