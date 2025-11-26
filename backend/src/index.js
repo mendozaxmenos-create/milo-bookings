@@ -80,16 +80,25 @@ async function checkAndSeed() {
 // Función para inicializar bots de todos los negocios activos
 async function initializeBots() {
   try {
-    // Verificar si se debe usar Meta WhatsApp Business API en lugar de whatsapp-web.js
-    const USE_META_API = process.env.USE_META_WHATSAPP_API === 'true' || 
-                         process.env.DISABLE_WHATSAPP_BOTS === 'true';
+    // Verificar si se debe usar Meta WhatsApp Business API
+    const USE_META_API = process.env.USE_META_WHATSAPP_API === 'true';
     
     if (USE_META_API) {
       console.log('='.repeat(60));
-      console.log('📱 [Init] ⚠️  Meta WhatsApp Business API está habilitada');
+      console.log('📱 [Init] ✅ Meta WhatsApp Business API está habilitada');
       console.log('📱 [Init] ⚠️  Los bots de whatsapp-web.js están DESACTIVADOS');
-      console.log('📱 [Init] ✅ Los bots ahora se manejan en Vercel Serverless Functions');
-      console.log('📱 [Init] 💾 Esto libera memoria en Render (no más Puppeteer)');
+      console.log('📱 [Init] 💾 Esto libera memoria (no más Puppeteer)');
+      console.log('📱 [Init] 🔗 Los mensajes se manejan vía webhook: /api/whatsapp/webhook');
+      
+      // Verificar que las credenciales estén configuradas
+      const { MetaWhatsAppService } = await import('./services/metaWhatsAppService.js');
+      if (MetaWhatsAppService.isConfigured()) {
+        console.log('📱 [Init] ✅ Credenciales de Meta API configuradas correctamente');
+      } else {
+        console.warn('📱 [Init] ⚠️  Credenciales de Meta API no configuradas');
+        console.warn('📱 [Init] ⚠️  Configura WHATSAPP_PHONE_NUMBER_ID y WHATSAPP_ACCESS_TOKEN');
+      }
+      
       console.log('='.repeat(60));
       return;
     }
@@ -105,8 +114,7 @@ async function initializeBots() {
       is_active: b.is_active
     })));
     console.log(`📱 [Init] Inicializando ${businesses.length} bot(s) de WhatsApp...`);
-    console.log(`📱 [Init] ⚠️  Usando whatsapp-web.js (consume mucha memoria)`);
-    console.log(`📱 [Init] 💡 Para usar Meta API, configura: USE_META_WHATSAPP_API=true`);
+    console.log(`📱 [Init] Usando whatsapp-web.js`);
     
     for (const business of businesses) {
       if (business.whatsapp_number) {

@@ -16,6 +16,7 @@ import adminRoutes from './routes/admin.js';
 import insuranceRoutes from './routes/insurance.js';
 import serviceResourcesRoutes from './routes/serviceResources.js';
 import backupsRoutes from './routes/backups.js';
+import whatsappRoutes from './routes/whatsapp.js';
 
 dotenv.config();
 
@@ -207,6 +208,7 @@ app.get('/', (req, res) => {
       payments: '/api/payments',
       bot: '/api/bot',
       admin: '/api/admin',
+      whatsapp: '/api/whatsapp/webhook',
     },
   };
   console.log('[Root] Enviando respuesta');
@@ -343,6 +345,8 @@ const apiLimiter = rateLimit({
     if (req.path === '/api/run-seeds') return true;
     // Saltar para health checks
     if (req.path === '/health' || req.path === '/') return true;
+    // Saltar para webhooks de Meta (WhatsApp y MercadoPago)
+    if (req.path === '/api/whatsapp/webhook' || req.path === '/api/payments/mercadopago/webhook') return true;
     return false;
   },
 });
@@ -363,6 +367,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/insurance', insuranceRoutes);
 app.use('/api/service-resources', serviceResourcesRoutes);
 app.use('/api/backups', backupsRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 // Error handling con logging estructurado
 app.use((err, req, res, next) => {

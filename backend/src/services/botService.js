@@ -321,46 +321,18 @@ export class BotService {
   }
 
   /**
-   * Envía un mensaje usando la API de Meta
+   * Envía un mensaje usando Meta WhatsApp Business API
    */
   static async sendMessage(to, text) {
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
-
-    if (!phoneNumberId || !accessToken) {
-      console.error('[BotService] WhatsApp credentials not configured');
-      throw new Error('WhatsApp credentials not configured');
+    // Usar Meta WhatsApp API si está configurado
+    if (process.env.USE_META_WHATSAPP_API === 'true') {
+      const { MetaWhatsAppService } = await import('./metaWhatsAppService.js');
+      return await MetaWhatsAppService.sendMessage(to, text);
     }
-
-    try {
-      const response = await fetch(
-        `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            messaging_product: 'whatsapp',
-            to: to,
-            type: 'text',
-            text: { body: text },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.text();
-        console.error('[BotService] Error enviando mensaje:', error);
-        throw new Error(`Failed to send message: ${error}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('[BotService] Error en sendMessage:', error);
-      throw error;
-    }
+    
+    // Fallback: intentar usar bot de whatsapp-web.js si está disponible
+    console.warn('[BotService] USE_META_WHATSAPP_API no está habilitado. Usando fallback.');
+    throw new Error('WhatsApp messaging not configured. Configure Meta WhatsApp API or enable whatsapp-web.js bots.');
   }
 }
 
