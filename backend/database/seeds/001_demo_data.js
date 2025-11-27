@@ -20,6 +20,7 @@ export async function seed(knex) {
     whatsapp_number: '+5491123456789',
     owner_phone: '+5491123456789',
     is_active: true,
+    plan_type: 'premium',
   }).returning('*');
 
   // Insert demo user
@@ -41,6 +42,8 @@ export async function seed(knex) {
     booking_confirmation_message: 'Tu reserva ha sido confirmada. Te esperamos!',
     payment_instructions_message: 'Por favor completa el pago para confirmar tu reserva.',
     reminder_message: 'Recordatorio: Tienes una reserva mañana.',
+    default_service_name: 'Servicio Básico',
+    default_service_price: 0,
   });
 
   // Insert demo services

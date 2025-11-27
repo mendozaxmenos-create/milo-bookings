@@ -20,6 +20,12 @@ export class Booking {
       payment_sandbox_init_point: data.payment_sandbox_init_point || null,
       amount: data.amount,
       notes: data.notes,
+      insurance_provider_id: data.insurance_provider_id || null,
+      copay_amount: data.copay_amount || null,
+      insurance_provider_name: data.insurance_provider_name || null,
+      resource_id: data.resource_id || null,
+      resource_name: data.resource_name || null,
+      reminder_sent: data.reminder_sent || false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -46,18 +52,11 @@ export class Booking {
       filters,
     });
     
-    // Primero verificar cuántas reservas hay en total para este negocio
-    const totalCount = await db('bookings')
-      .where({ business_id: businessId })
-      .count('* as count')
-      .first();
-    
-    console.log('[Booking.findByBusiness] Total bookings in DB for business:', {
-      businessId,
-      totalCount: totalCount?.count || 0,
-    });
-    
-    const query = db('bookings')
+    // Construir query base para contar total (con mismos filtros)
+    const countQuery = db('bookings')
+      .where({ 'bookings.business_id': businessId });
+
+    const dataQuery = db('bookings')
       .join('services', 'bookings.service_id', 'services.id')
       .select(
         'bookings.*',
@@ -66,34 +65,65 @@ export class Booking {
       )
       .where({ 'bookings.business_id': businessId });
 
+    // Aplicar filtros a ambas queries
     if (filters.status) {
-      query.where({ 'bookings.status': filters.status });
+      countQuery.where({ 'bookings.status': filters.status });
+      dataQuery.where({ 'bookings.status': filters.status });
     }
 
     if (filters.date) {
-      query.where({ 'bookings.booking_date': filters.date });
+      countQuery.where({ 'bookings.booking_date': filters.date });
+      dataQuery.where({ 'bookings.booking_date': filters.date });
     }
 
     if (filters.customer_phone) {
-      query.where({ 'bookings.customer_phone': filters.customer_phone });
+      countQuery.where({ 'bookings.customer_phone': filters.customer_phone });
+      dataQuery.where({ 'bookings.customer_phone': filters.customer_phone });
     }
 
-    const bookings = await query
+    // Búsqueda por nombre o teléfono
+    if (filters.search) {
+      const searchTerm = `%${filters.search}%`;
+      countQuery.where(function() {
+        this.where('bookings.customer_name', 'like', searchTerm)
+          .orWhere('bookings.customer_phone', 'like', searchTerm);
+      });
+      dataQuery.where(function() {
+        this.where('bookings.customer_name', 'like', searchTerm)
+          .orWhere('bookings.customer_phone', 'like', searchTerm);
+      });
+    }
+
+    // Contar total con filtros aplicados
+    const totalCountResult = await countQuery.count('* as count').first();
+    const totalCount = parseInt(totalCountResult?.count || 0);
+
+    // Configurar paginación
+    const page = parseInt(filters.page) || 1;
+    const limit = parseInt(filters.limit) || 20;
+    const offset = (page - 1) * limit;
+
+    const bookings = await dataQuery
       .orderBy('bookings.booking_date', 'desc')
       .orderBy('bookings.booking_time', 'desc')
-      .limit(filters.limit || 100)
-      .offset(filters.offset || 0);
+      .limit(limit)
+      .offset(offset);
     
+    const totalPages = Math.ceil(totalCount / limit);
+
     console.log('[Booking.findByBusiness] Query result:', {
       businessId,
-      requestedCount: filters.limit || 100,
+      page,
+      limit,
+      totalCount,
+      totalPages,
       returnedCount: bookings?.length || 0,
       statuses: bookings?.map(b => b.status) || [],
       sampleIds: bookings?.slice(0, 3).map(b => b.id) || [],
     });
     
     // Si no hay resultados pero debería haber, verificar el join
-    if ((!bookings || bookings.length === 0) && totalCount?.count > 0) {
+    if ((!bookings || bookings.length === 0) && totalCount > 0) {
       console.warn('[Booking.findByBusiness] WARNING: No bookings returned but totalCount > 0. Checking join issue...');
       
       // Verificar si hay reservas sin servicio asociado
@@ -155,6 +185,28 @@ export class Booking {
       )
       .where({ 'bookings.business_id': businessId })
       .whereBetween('bookings.booking_date', [startDate, endDate])
+      .orderBy('bookings.booking_date', 'asc')
+      .orderBy('bookings.booking_time', 'asc');
+  }
+
+  /**
+   * Encuentra reservas confirmadas próximas (para recordatorios)
+   */
+  static async findUpcomingConfirmed() {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStr = today.toISOString().split('T')[0];
+    
+    return db('bookings')
+      .join('services', 'bookings.service_id', 'services.id')
+      .select(
+        'bookings.*',
+        'services.name as service_name',
+        'services.duration_minutes as service_duration'
+      )
+      .where({ 'bookings.status': 'confirmed' })
+      .where('bookings.booking_date', '>=', todayStr)
+      .where('bookings.reminder_sent', false)
       .orderBy('bookings.booking_date', 'asc')
       .orderBy('bookings.booking_time', 'asc');
   }

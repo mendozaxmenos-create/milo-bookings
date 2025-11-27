@@ -30,21 +30,38 @@ export function Layout() {
         <nav style={{ flex: 1 }}>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {isSuperAdmin ? (
-              <li style={{ marginBottom: '0.5rem' }}>
-                <Link
-                  to="/admin/businesses"
-                  style={{
-                    display: 'block',
-                    padding: '0.75rem 1rem',
-                    borderRadius: '4px',
-                    textDecoration: 'none',
-                    color: isActive('/admin/businesses') ? '#fff' : '#adb5bd',
-                    backgroundColor: isActive('/admin/businesses') ? '#495057' : 'transparent',
-                  }}
-                >
-                  🏢 Negocios
-                </Link>
-              </li>
+              <>
+                <li style={{ marginBottom: '0.5rem' }}>
+                  <Link
+                    to="/admin/businesses"
+                    style={{
+                      display: 'block',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '4px',
+                      textDecoration: 'none',
+                      color: isActive('/admin/businesses') ? '#fff' : '#adb5bd',
+                      backgroundColor: isActive('/admin/businesses') ? '#495057' : 'transparent',
+                    }}
+                  >
+                    🏢 Negocios
+                  </Link>
+                </li>
+                <li style={{ marginBottom: '0.5rem' }}>
+                  <Link
+                    to="/admin/shortlinks"
+                    style={{
+                      display: 'block',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '4px',
+                      textDecoration: 'none',
+                      color: isActive('/admin/shortlinks') ? '#fff' : '#adb5bd',
+                      backgroundColor: isActive('/admin/shortlinks') ? '#495057' : 'transparent',
+                    }}
+                  >
+                    🔗 Shortlinks
+                  </Link>
+                </li>
+              </>
             ) : (
               <>
                 <li style={{ marginBottom: '0.5rem' }}>

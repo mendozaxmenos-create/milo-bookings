@@ -56,11 +56,8 @@ export interface LoginResponse {
   user: {
     id: string;
     business_id: string;
-    phone?: string;
-    email?: string;
-    name?: string;
+    phone: string;
     role: string;
-    is_system_user?: boolean;
   };
 }
 
@@ -196,5 +193,56 @@ export const getSubscriptionPrice = async (): Promise<SubscriptionPriceResponse>
 export const updateSubscriptionPrice = async (price: string): Promise<SubscriptionPriceResponse> => {
   const response = await api.put<SubscriptionPriceResponse>('/admin/config/subscription-price', { price });
   return response.data;
+};
+
+// Shortlinks API
+export interface Shortlink {
+  slug: string;
+  name: string;
+  url: string;
+}
+
+export interface ShortlinksResponse {
+  shortlinks: Shortlink[];
+}
+
+export interface CreateShortlinkRequest {
+  name: string;
+  slug: string;
+  businessId?: string;
+  settings?: any;
+}
+
+export interface CreateShortlinkResponse {
+  id: string;
+  name: string;
+  slug: string;
+  url: string;
+}
+
+export const getShortlinks = async (): Promise<ShortlinksResponse> => {
+  // Llamar al endpoint de Vercel serverless function
+  const baseURL = import.meta.env.VITE_API_URL || '';
+  const response = await fetch(`${baseURL}/api/shortlinks`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch shortlinks');
+  }
+  return response.json();
+};
+
+export const createShortlink = async (data: CreateShortlinkRequest): Promise<CreateShortlinkResponse> => {
+  const baseURL = import.meta.env.VITE_API_URL || '';
+  const response = await fetch(`${baseURL}/api/shortlinks`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create shortlink');
+  }
+  return response.json();
 };
 

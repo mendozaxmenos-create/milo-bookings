@@ -1,0 +1,9 @@
+# Copia y pega estos comandos en una TERMINAL NUEVA
+
+cd C:\Users\gusta\Desktop\milo-bookings
+git checkout main
+git pull origin main
+git add -A
+git commit -m "chore: Asegurar que todos los cambios estén en GitHub - Shortlinks y configuración completa"
+git push origin main
+

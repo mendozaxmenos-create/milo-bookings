@@ -7,6 +7,12 @@ import { activeBots } from '../index.js';
  */
 export async function checkExpiredTrials() {
   try {
+    // Verificar que DATABASE_URL esté configurada
+    if (!process.env.DATABASE_URL && process.env.NODE_ENV === 'production') {
+      console.warn('[TrialService] DATABASE_URL no está configurada, saltando verificación de trials');
+      return;
+    }
+    
     const now = new Date();
     
     // Buscar negocios con trial expirado
