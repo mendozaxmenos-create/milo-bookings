@@ -4,17 +4,21 @@ import axios from 'axios';
 const getApiBaseURL = () => {
   // En producción, usar variable de entorno
   if (import.meta.env.VITE_API_URL) {
+    console.log('[API] Using VITE_API_URL:', import.meta.env.VITE_API_URL);
     return import.meta.env.VITE_API_URL;
   }
   
   // En desarrollo, usar proxy relativo
   if (import.meta.env.DEV) {
+    console.log('[API] Development mode: using /api proxy');
     return '/api';
   }
   
-  // Fallback: intentar detectar automáticamente
-  // Si estamos en producción y no hay variable, usar el mismo dominio
-  return '/api';
+  // Fallback: en producción sin variable, usar Render backend
+  const fallbackURL = 'https://milo-bookings.onrender.com';
+  console.warn('[API] ⚠️ VITE_API_URL not set! Using fallback:', fallbackURL);
+  console.warn('[API] Please configure VITE_API_URL in Vercel environment variables');
+  return fallbackURL;
 };
 
 const api = axios.create({

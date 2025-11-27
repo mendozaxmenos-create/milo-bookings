@@ -33,8 +33,22 @@ export function Login() {
       } else {
         navigate('/dashboard');
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error al iniciar sesión';
+    } catch (err: any) {
+      console.error('Login error:', err);
+      let message = 'Error al iniciar sesión';
+      
+      if (err?.response) {
+        // Error de respuesta del servidor
+        message = err.response.data?.error || err.response.data?.message || `Error ${err.response.status}: ${err.response.statusText}`;
+      } else if (err?.request) {
+        // Error de conexión (no se recibió respuesta)
+        message = 'No se pudo conectar con el servidor. Verifica que el backend esté funcionando.';
+        console.error('No response received:', err.request);
+      } else {
+        // Otro tipo de error
+        message = err?.message || 'Error desconocido al iniciar sesión';
+      }
+      
       setError(message);
     } finally {
       setLoading(false);
