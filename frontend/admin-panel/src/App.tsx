@@ -6,6 +6,7 @@ import { Bookings } from './pages/Bookings';
 import { Availability } from './pages/Availability';
 import { Settings } from './pages/Settings';
 import { AdminBusinesses } from './pages/AdminBusinesses';
+import { Shortlinks } from './pages/Shortlinks';
 import { useAuthStore } from './store/authStore';
 import { Layout } from './components/Layout';
 
@@ -26,6 +27,7 @@ function App() {
             element={isAuthenticated ? <Layout /> : <Navigate to="/login" replace />}
           >
             <Route path="businesses" element={<AdminBusinesses />} />
+            <Route path="shortlinks" element={<Shortlinks />} />
             <Route index element={<Navigate to="/admin/businesses" replace />} />
           </Route>
         ) : (

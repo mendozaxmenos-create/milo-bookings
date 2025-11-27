@@ -1,5 +1,6 @@
 import express from 'express';
 import { Service } from '../../../database/models/Service.js';
+import { Business } from '../../../database/models/Business.js';
 import { authenticateToken } from '../../utils/auth.js';
 import { validateService } from '../../utils/validators.js';
 
@@ -62,6 +63,25 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: error.details[0].message });
     }
 
+    const business = await Business.findById(req.user.business_id);
+    if (!business) {
+      return res.status(404).json({ error: 'Business not found' });
+    }
+
+    const planType = business.plan_type || 'basic';
+
+    if (planType === 'basic') {
+      const serviceCount = await Service.countByBusiness(req.user.business_id);
+      if (serviceCount >= 1) {
+        return res.status(400).json({
+          error: 'El plan básico solo permite un servicio. Actualiza tu plan para agregar más servicios.',
+        });
+      }
+
+      value.requires_payment = true;
+      value.has_multiple_resources = false;
+    }
+
     const service = await Service.create({
       ...value,
       business_id: req.user.business_id,
@@ -91,6 +111,20 @@ router.put('/:id', async (req, res) => {
     const { error, value } = validateService(req.body, true);
     if (error) {
       return res.status(400).json({ error: error.details[0].message });
+    }
+
+    const business = await Business.findById(req.user.business_id);
+    const planType = business?.plan_type || 'basic';
+
+    if (planType === 'basic') {
+      if (value.has_multiple_resources) {
+        console.warn('[Service] Basic plan cannot enable multiple resources');
+      }
+      value.has_multiple_resources = false;
+      if (value.requires_payment === false) {
+        console.warn('[Service] Basic plan requires payment, forcing requires_payment=true');
+      }
+      value.requires_payment = true;
     }
 
     const updated = await Service.update(req.params.id, value);

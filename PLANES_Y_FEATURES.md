@@ -18,6 +18,7 @@ Basado en análisis de competidores como **Calendly**, **Acuity Scheduling**, **
 - ✅ Dashboard con estadísticas básicas
 - ✅ Personalización de mensajes del bot
 - ✅ Integración con MercadoPago (pago único)
+- ✅ 1 servicio/producto activo con cobro obligatorio (precio configurable)
 - ✅ Hasta 1 ubicación/sucursal
 - ✅ Hasta 50 reservas/mes
 
@@ -53,6 +54,50 @@ Basado en análisis de competidores como **Calendly**, **Acuity Scheduling**, **
 ---
 
 ## 💎 PLAN PREMIUM (El más alto - $99-149/mes)
+
+### Todas las features de Plan Intermedio +
+- ✅ Módulo de obras sociales y copagos configurables por aseguradora
+- ✅ Servicios con múltiples recursos simultáneos (canchas, cabinas, boxes)
+
+#### 1. 🔔 **Notificaciones Push en Navegador**
+- Notificaciones push del navegador cuando hay nuevas reservas
+- Alertas en tiempo real sin necesidad de estar en el panel
+- Configuración de qué eventos generar notificaciones
+- Soporte para múltiples dispositivos
+- **Valor:** Mejora la respuesta rápida a nuevas reservas, mejor experiencia de usuario
+
+#### 2. 📊 **Reportes Avanzados y Exportación**
+- Reportes exportables en PDF, Excel, CSV
+- Análisis de tendencias mensuales/anuales
+- Gráficos interactivos de ingresos y reservas
+- Comparativas período a período
+- **Valor:** Análisis profundo de negocio, identificación de oportunidades
+
+#### 3. 👥 **CRM Avanzado de Clientes**
+- Perfiles completos de clientes con historial
+- Segmentación avanzada (nuevos, recurrentes, VIP, inactivos)
+- Notas y tags personalizados por cliente
+- Campañas de marketing dirigidas
+- **Valor:** Mejora la relación con clientes, aumenta la retención
+
+#### 4. 🔄 **Integraciones Avanzadas**
+- Integración con Google Calendar
+- Integración con sistemas de facturación
+- API pública para integraciones personalizadas
+- Webhooks personalizables
+- **Valor:** Conecta con tu stack tecnológico existente
+
+#### 5. 🌐 **Multi-idioma**
+- Soporte para múltiples idiomas (Español, Inglés, Portugués)
+- Personalización de mensajes por idioma
+- Dashboard traducido
+- **Valor:** Expansión internacional, más flexibilidad
+
+#### 6. 🏢 **Múltiples Ubicaciones/Sucursales**
+- Gestionar múltiples sucursales desde un solo panel
+- Transferir reservas entre sucursales
+- Reportes consolidados por sucursal
+- **Valor:** Escalabilidad para negocios en crecimiento
 
 ### 3 Features Premium Adicionales:
 

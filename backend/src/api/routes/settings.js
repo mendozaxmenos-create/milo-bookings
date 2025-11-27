@@ -38,13 +38,35 @@ router.put('/', async (req, res) => {
       booking_confirmation_message,
       payment_instructions_message,
       reminder_message,
+      insurance_enabled,
+      reminders_enabled,
+      reminder_hours_before,
+      owner_notifications_enabled,
+      owner_notification_message,
+      notification_phones,
+      default_notification_phone,
+      default_service_name,
+      default_service_price,
+      default_service_description,
     } = req.body;
+
+    const parsedPrice = default_service_price !== undefined ? parseFloat(default_service_price) || 0 : undefined;
 
     const settings = await BusinessSettings.createOrUpdate(req.user.business_id, {
       welcome_message,
       booking_confirmation_message,
       payment_instructions_message,
       reminder_message,
+      insurance_enabled,
+      reminders_enabled,
+      reminder_hours_before,
+      owner_notifications_enabled,
+      owner_notification_message,
+      notification_phones,
+      default_notification_phone,
+      default_service_name,
+      default_service_price: parsedPrice,
+      default_service_description,
     });
 
     // Notificar al bot que debe recargar la configuración
