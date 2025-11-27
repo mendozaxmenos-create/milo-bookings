@@ -1,0 +1,12 @@
+# Ejecuta estos comandos para subir la corrección de rutas de API
+
+cd C:\Users\gusta\Desktop\milo-bookings
+git checkout main
+git pull origin main
+git add frontend/admin-panel/src/services/api.ts frontend/admin-panel/src/pages/Settings.tsx frontend/admin-panel/src/pages/Services.tsx frontend/admin-panel/src/pages/Dashboard.tsx frontend/admin-panel/src/pages/Bookings.tsx frontend/admin-panel/src/pages/Availability.tsx
+git commit -m "fix: Corregir todas las rutas de API - agregar prefijo /api a todas las rutas"
+git checkout -b fix/corregir-rutas-api
+git push -u origin fix/corregir-rutas-api
+
+# Después crea un PR y haz merge
+

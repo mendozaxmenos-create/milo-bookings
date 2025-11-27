@@ -1,0 +1,12 @@
+# Ejecuta estos comandos para subir la corrección final
+
+cd C:\Users\gusta\Desktop\milo-bookings
+git checkout main
+git pull origin main
+git add frontend/admin-panel/src/pages/AdminBusinesses.tsx
+git commit -m "fix: Remover import no usado updateBusiness"
+git checkout -b fix/remover-import-no-usado
+git push -u origin fix/remover-import-no-usado
+
+# Después crea un PR y haz merge
+

@@ -58,7 +58,7 @@ export function Settings() {
   const { data, isLoading, isFetching } = useQuery<{ data: BusinessSettings }>({
     queryKey: ['business-settings'],
     queryFn: async () => {
-      const response = await api.get('/settings');
+      const response = await api.get('/api/settings');
       return response.data;
     },
   });
@@ -93,7 +93,7 @@ export function Settings() {
 
   const updateMutation = useMutation({
     mutationFn: async (payload: BusinessSettings) => {
-      const response = await api.put('/settings', payload);
+      const response = await api.put('/api/settings', payload);
       return response.data;
     },
     onSuccess: () => {
