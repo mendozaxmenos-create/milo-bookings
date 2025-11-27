@@ -16,7 +16,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    const slug = req.query.slug;
+    // Obtener slug desde query params o desde la URL path (rewrite)
+    let slug = req.query.slug;
+    
+    // Si no hay slug en query, intentar extraerlo de la URL
+    if (!slug && req.url) {
+      // El rewrite de Vercel puede pasar el slug en la URL
+      // Ejemplo: /monpatisserie -> /api/shortlink
+      // En este caso, necesitamos extraerlo del path original
+      const pathMatch = req.url.match(/^\/([a-z0-9-]+)/);
+      if (pathMatch) {
+        slug = pathMatch[1];
+      }
+    }
 
     if (!slug) {
       return res.status(400).json({ error: 'Missing slug parameter' });

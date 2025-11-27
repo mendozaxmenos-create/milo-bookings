@@ -101,19 +101,44 @@
 - ✅ **Sincronización Automática** - Servicios, horarios y mensajes siempre actualizados
 - ✅ **Multi-tenant** - Soporte para múltiples negocios desde una sola instancia
 
+### 🎯 Arquitectura Multi-Tenant con Shortlinks
+
+**Milo Bookings utiliza un único número de WhatsApp (Meta Business API) para múltiples comercios.**
+
+Cada comercio tiene un **shortlink único** que no expone el número ni parámetros visibles:
+
+- **Ejemplo**: `https://go.soymilo.com/monpatisserie`
+- **Redirige a**: `https://wa.me/<NUMERO>?text=monpatisserie` (redirect 301 invisible)
+- **El usuario nunca ve**: el número real, el slug, ni parámetros
+
+**Flujo:**
+1. Usuario toca shortlink → WhatsApp abre automáticamente
+2. Bot recibe mensaje con slug → identifica el comercio
+3. Se crea/continúa sesión asociada al comercio
+4. Conversación continúa en contexto del comercio correcto
+
+**Sesiones Multi-Tenant:**
+- Un usuario puede interactuar con múltiples comercios desde el mismo número
+- Cada sesión es independiente: `user_phone` + `client_slug` + `state`
+- Si el usuario escribe sin shortlink → continúa sesión activa o pregunta qué comercio
+
+📖 **Ver [ARQUITECTURA_MULTI_TENANT.md](./ARQUITECTURA_MULTI_TENANT.md) para detalles completos**
+
 ---
 
 ## 🏗️ Arquitectura
 
 ### Componentes
 
-1. **Bot de WhatsApp** (`whatsapp-web.js`) - Interfaz principal con clientes
+1. **Bot de WhatsApp** (Meta Business API) - Interfaz principal con clientes
 2. **API Backend** (Express.js) - Lógica de negocio y endpoints REST
 3. **Panel Web** (React + TypeScript) - Administración para dueños de negocios
 4. **Base de Datos** (PostgreSQL) - Almacenamiento persistente
-5. **Sistema de Disponibilidad** - Calcula horarios disponibles según configuración
-6. **Sistema de Pagos** (MercadoPago) - Procesamiento de pagos
-7. **Sistema de Backups** - Backups automáticos de base de datos
+5. **Shortlinks** (Vercel Serverless) - Redirección a WhatsApp con identificación de comercio
+6. **Sistema de Sesiones** - Manejo multi-tenant de conversaciones
+7. **Sistema de Disponibilidad** - Calcula horarios disponibles según configuración
+8. **Sistema de Pagos** (MercadoPago) - Procesamiento de pagos
+9. **Sistema de Backups** - Backups automáticos de base de datos
 
 ### Stack Tecnológico
 
@@ -124,10 +149,11 @@
 - **ORM:** Knex.js
 - **Autenticación:** JWT (jsonwebtoken)
 - **Validación:** Joi
-- **WhatsApp:** whatsapp-web.js
+- **WhatsApp:** Meta WhatsApp Business API (producción) / whatsapp-web.js (legacy, desactivado)
 - **Pagos:** MercadoPago SDK
 - **Logging:** Winston (logger estructurado)
 - **Seguridad:** bcrypt, helmet, express-rate-limit
+- **Multi-tenant:** Sistema de clientes y sesiones con shortlinks
 
 #### Frontend
 - **Framework:** React 18+
@@ -140,15 +166,18 @@
 - **Styling:** CSS inline (listo para migrar a Tailwind/MUI)
 
 #### DevOps & Deployment
-- **Contenedores:** Docker
+- **Backend:** Render, Railway (Docker)
+- **Frontend:** Vercel (Serverless Functions para shortlinks)
+- **Base de Datos:** PostgreSQL (Render, Railway)
 - **CI/CD:** GitHub Actions (configurable)
-- **Plataformas:** Railway, Render, Vercel, Heroku
+- **Shortlinks:** Vercel Serverless Functions + Cloudflare/Vercel rewrites
 
 ---
 
 ## 📚 Documentación
 
 - **[Guía de Deployment](./DEPLOYMENT.md)** - 🚀 Guía completa para desplegar en la nube
+- **[Arquitectura Multi-Tenant](./ARQUITECTURA_MULTI_TENANT.md)** - 🏗️ Sistema de shortlinks y multi-tenant
 - **[Estado del MVP](./MVP_STATUS.md)** - 📊 Checklist completo de funcionalidades
 - **[Planes y Features](./PLANES_Y_FEATURES.md)** - 💎 Roadmap de features premium
 - **[Servicio de Backups](./BACKUP_SERVICE.md)** - 💾 Documentación de backups automáticos

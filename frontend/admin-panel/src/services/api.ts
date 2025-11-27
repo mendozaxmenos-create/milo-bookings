@@ -4,63 +4,25 @@ import axios from 'axios';
 const getApiBaseURL = () => {
   // En producción, usar variable de entorno
   if (import.meta.env.VITE_API_URL) {
-    console.log('[API] Using VITE_API_URL:', import.meta.env.VITE_API_URL);
     return import.meta.env.VITE_API_URL;
   }
   
   // En desarrollo, usar proxy relativo
   if (import.meta.env.DEV) {
-    console.log('[API] Development mode: using /api proxy');
     return '/api';
   }
   
-  // Fallback: en producción sin variable, usar Render backend
-  const fallbackURL = 'https://milo-bookings.onrender.com';
-  console.warn('[API] ⚠️ VITE_API_URL not set! Using fallback:', fallbackURL);
-  console.warn('[API] Please configure VITE_API_URL in Vercel environment variables');
-  return fallbackURL;
+  // Fallback: intentar detectar automáticamente
+  // Si estamos en producción y no hay variable, usar el mismo dominio
+  return '/api';
 };
 
-const apiBaseURL = getApiBaseURL();
-console.log('[API] Base URL configured:', apiBaseURL);
-
 const api = axios.create({
-  baseURL: apiBaseURL,
+  baseURL: getApiBaseURL(),
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 60000, // 60 segundos timeout (Render free tier puede tardar ~30s en "despertar")
 });
-
-// Interceptor para logging de requests
-api.interceptors.request.use(
-  (config) => {
-    console.log('[API] Request:', config.method?.toUpperCase(), config.url, config.baseURL);
-    return config;
-  },
-  (error) => {
-    console.error('[API] Request error:', error);
-    return Promise.reject(error);
-  }
-);
-
-// Interceptor para logging de responses
-api.interceptors.response.use(
-  (response) => {
-    console.log('[API] Response:', response.status, response.config.url);
-    return response;
-  },
-  (error) => {
-    console.error('[API] Response error:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      url: error.config?.url,
-      baseURL: error.config?.baseURL,
-      message: error.message,
-    });
-    return Promise.reject(error);
-  }
-);
 
 // Interceptor para agregar token a las requests
 api.interceptors.request.use((config) => {
@@ -90,54 +52,18 @@ export interface LoginResponse {
   user: {
     id: string;
     business_id: string;
-    phone?: string;
-    email?: string;
-    name?: string;
+    phone: string;
     role: string;
-    is_system_user?: boolean;
   };
 }
 
 export const login = async (data: LoginRequest): Promise<LoginResponse> => {
-  const response = await api.post<LoginResponse>('/api/auth/login', data);
+  const response = await api.post<LoginResponse>('/auth/login', data);
   return response.data;
 };
 
 export const register = async (data: LoginRequest & { role?: string }): Promise<LoginResponse> => {
-  const response = await api.post<LoginResponse>('/api/auth/register', data);
-  return response.data;
-};
-
-export interface ForgotPasswordRequest {
-  email?: string; // Para super admin
-  business_id?: string; // Para business user
-  phone?: string; // Para business user
-}
-
-export interface ForgotPasswordResponse {
-  message: string;
-  success: boolean;
-  token?: string; // Token para super admin (MVP - debería enviarse por email)
-  isSystemUser?: boolean;
-}
-
-export interface ResetPasswordRequest {
-  token: string;
-  password: string;
-}
-
-export interface ResetPasswordResponse {
-  message: string;
-  success: boolean;
-}
-
-export const forgotPassword = async (data: ForgotPasswordRequest): Promise<ForgotPasswordResponse> => {
-  const response = await api.post<ForgotPasswordResponse>('/api/auth/forgot-password', data);
-  return response.data;
-};
-
-export const resetPassword = async (data: ResetPasswordRequest): Promise<ResetPasswordResponse> => {
-  const response = await api.post<ResetPasswordResponse>('/api/auth/reset-password', data);
+  const response = await api.post<LoginResponse>('/auth/register', data);
   return response.data;
 };
 
@@ -159,12 +85,12 @@ export interface UpdatePaymentConfigRequest {
 }
 
 export const getPaymentConfig = async (): Promise<PaymentConfigResponse> => {
-  const response = await api.get<PaymentConfigResponse>('/api/payments/config');
+  const response = await api.get<PaymentConfigResponse>('/payments/config');
   return response.data;
 };
 
 export const updatePaymentConfig = async (payload: UpdatePaymentConfigRequest): Promise<PaymentConfigResponse> => {
-  const response = await api.put<PaymentConfigResponse>('/api/payments/config', payload);
+  const response = await api.put<PaymentConfigResponse>('/payments/config', payload);
   return response.data;
 };
 
@@ -184,7 +110,6 @@ export interface Business {
   has_qr?: boolean;
   created_at: string;
   updated_at: string;
-  plan_type?: 'basic' | 'premium';
 }
 
 export interface BusinessListResponse {
@@ -210,44 +135,43 @@ export interface CreateBusinessRequest {
   owner_phone: string;
   is_active?: boolean;
   is_trial?: boolean;
-  plan_type?: 'basic' | 'premium';
 }
 
 export const getBusinesses = async (): Promise<BusinessListResponse> => {
-  const response = await api.get<BusinessListResponse>('/api/admin/businesses');
+  const response = await api.get<BusinessListResponse>('/admin/businesses');
   return response.data;
 };
 
 export const getBusiness = async (id: string): Promise<BusinessResponse> => {
-  const response = await api.get<BusinessResponse>(`/api/admin/businesses/${id}`);
+  const response = await api.get<BusinessResponse>(`/admin/businesses/${id}`);
   return response.data;
 };
 
 export const createBusiness = async (data: CreateBusinessRequest): Promise<BusinessResponse> => {
-  const response = await api.post<BusinessResponse>('/api/admin/businesses', data);
+  const response = await api.post<BusinessResponse>('/admin/businesses', data);
   return response.data;
 };
 
 export const updateBusiness = async (id: string, data: Partial<CreateBusinessRequest>): Promise<BusinessResponse> => {
-  const response = await api.put<BusinessResponse>(`/api/admin/businesses/${id}`, data);
+  const response = await api.put<BusinessResponse>(`/admin/businesses/${id}`, data);
   return response.data;
 };
 
 export const deleteBusiness = async (id: string): Promise<void> => {
-  await api.delete(`/api/admin/businesses/${id}`);
+  await api.delete(`/admin/businesses/${id}`);
 };
 
 export const activateBusiness = async (id: string): Promise<void> => {
-  await api.post(`/api/admin/businesses/${id}/activate`);
+  await api.post(`/admin/businesses/${id}/activate`);
 };
 
 export const getBusinessQR = async (id: string): Promise<{ data: { qr: string; status: string } }> => {
-  const response = await api.get<{ data: { qr: string; status: string } }>(`/api/admin/businesses/${id}/qr`);
+  const response = await api.get<{ data: { qr: string; status: string } }>(`/admin/businesses/${id}/qr`);
   return response.data;
 };
 
 export const reconnectBusinessBot = async (id: string): Promise<void> => {
-  await api.post(`/api/admin/businesses/${id}/reconnect-bot`);
+  await api.post(`/admin/businesses/${id}/reconnect-bot`);
 };
 
 // System Config API
@@ -258,198 +182,63 @@ export interface SubscriptionPriceResponse {
 }
 
 export const getSubscriptionPrice = async (): Promise<SubscriptionPriceResponse> => {
-  const response = await api.get<SubscriptionPriceResponse>('/api/admin/config/subscription-price');
+  const response = await api.get<SubscriptionPriceResponse>('/admin/config/subscription-price');
   return response.data;
 };
 
 export const updateSubscriptionPrice = async (price: string): Promise<SubscriptionPriceResponse> => {
-  const response = await api.put<SubscriptionPriceResponse>('/api/admin/config/subscription-price', { price });
+  const response = await api.put<SubscriptionPriceResponse>('/admin/config/subscription-price', { price });
   return response.data;
 };
 
-// Insurance Providers API
-export interface InsuranceProvider {
+// Shortlinks API
+export interface Shortlink {
+  slug: string;
+  name: string;
+  url: string;
+}
+
+export interface ShortlinksResponse {
+  shortlinks: Shortlink[];
+}
+
+export interface CreateShortlinkRequest {
+  name: string;
+  slug: string;
+  businessId?: string;
+  settings?: any;
+}
+
+export interface CreateShortlinkResponse {
   id: string;
-  business_id: string;
   name: string;
-  copay_amount: number;
-  display_order: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  slug: string;
+  url: string;
 }
 
-export interface InsuranceProviderListResponse {
-  data: InsuranceProvider[];
-}
-
-export interface InsuranceProviderResponse {
-  data: InsuranceProvider;
-}
-
-export interface CreateInsuranceProviderRequest {
-  name: string;
-  copay_amount: number;
-  display_order?: number;
-  is_active?: boolean;
-}
-
-export const getInsuranceProviders = async (): Promise<InsuranceProviderListResponse> => {
-  const response = await api.get<InsuranceProviderListResponse>('/api/insurance');
-  return response.data;
+export const getShortlinks = async (): Promise<ShortlinksResponse> => {
+  // Llamar al endpoint de Vercel serverless function
+  const baseURL = import.meta.env.VITE_API_URL || '';
+  const response = await fetch(`${baseURL}/api/shortlinks`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch shortlinks');
+  }
+  return response.json();
 };
 
-export const createInsuranceProvider = async (data: CreateInsuranceProviderRequest): Promise<InsuranceProviderResponse> => {
-  const response = await api.post<InsuranceProviderResponse>('/api/insurance', data);
-  return response.data;
-};
-
-export const updateInsuranceProvider = async (id: string, data: Partial<CreateInsuranceProviderRequest>): Promise<InsuranceProviderResponse> => {
-  const response = await api.put<InsuranceProviderResponse>(`/api/insurance/${id}`, data);
-  return response.data;
-};
-
-export const deleteInsuranceProvider = async (id: string): Promise<void> => {
-  await api.delete(`/api/insurance/${id}`);
-};
-
-export const toggleInsuranceProvider = async (id: string): Promise<InsuranceProviderResponse> => {
-  const response = await api.patch<InsuranceProviderResponse>(`/api/insurance/${id}/toggle`);
-  return response.data;
-};
-
-// Service API
-export interface Service {
-  id: string;
-  business_id: string;
-  name: string;
-  description?: string;
-  duration_minutes: number;
-  price: number;
-  display_order: number;
-  is_active: boolean;
-  requires_payment: boolean;
-  has_multiple_resources?: boolean;
-  resource_count?: number | null;
-}
-
-export interface ServiceListResponse {
-  data: Service[];
-}
-
-export interface ServiceResponse {
-  data: Service;
-}
-
-export const getServices = async (): Promise<ServiceListResponse> => {
-  const response = await api.get<ServiceListResponse>('/api/services');
-  return response.data;
-};
-
-export const getService = async (id: string): Promise<ServiceResponse> => {
-  const response = await api.get<ServiceResponse>(`/api/services/${id}`);
-  return response.data;
-};
-
-export const createService = async (data: Partial<Service>): Promise<ServiceResponse> => {
-  const response = await api.post<ServiceResponse>('/api/services', data);
-  return response.data;
-};
-
-export const updateService = async (id: string, data: Partial<Service>): Promise<ServiceResponse> => {
-  const response = await api.put<ServiceResponse>(`/api/services/${id}`, data);
-  return response.data;
-};
-
-export const deleteService = async (id: string): Promise<void> => {
-  await api.delete(`/api/services/${id}`);
-};
-
-export const toggleServiceActive = async (id: string): Promise<ServiceResponse> => {
-  const response = await api.patch<ServiceResponse>(`/api/services/${id}/toggle`);
-  return response.data;
-};
-
-// Service Resources API
-export interface ServiceResource {
-  id: string;
-  service_id: string;
-  name: string;
-  display_order: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export const getServiceResources = async (serviceId: string): Promise<{ data: ServiceResource[] }> => {
-  const response = await api.get<{ data: ServiceResource[] }>(`/api/service-resources/service/${serviceId}`);
-  return response.data;
-};
-
-export const createServiceResource = async (data: { service_id: string; name: string; display_order?: number }): Promise<{ data: ServiceResource }> => {
-  const response = await api.post<{ data: ServiceResource }>('/api/service-resources', data);
-  return response.data;
-};
-
-export const updateServiceResource = async (id: string, data: { name?: string; display_order?: number }): Promise<{ data: ServiceResource }> => {
-  const response = await api.put<{ data: ServiceResource }>(`/api/service-resources/${id}`, data);
-  return response.data;
-};
-
-export const deleteServiceResource = async (id: string): Promise<void> => {
-  await api.delete(`/api/service-resources/${id}`);
-};
-
-export const toggleServiceResourceActive = async (id: string): Promise<{ data: ServiceResource }> => {
-  const response = await api.patch<{ data: ServiceResource }>(`/api/service-resources/${id}/toggle`);
-  return response.data;
-};
-
-// Backups API (Super Admin only)
-export interface Backup {
-  fileName: string;
-  size: number;
-  sizeMB: number;
-  createdAt: string;
-  modifiedAt: string;
-}
-
-export interface BackupListResponse {
-  data: Backup[];
-}
-
-export interface CreateBackupResponse {
-  data: Backup & {
-    filePath: string;
-  };
-  message: string;
-}
-
-export const getBackups = async (): Promise<BackupListResponse> => {
-  const response = await api.get<BackupListResponse>('/api/backups');
-  return response.data;
-};
-
-export const createBackup = async (): Promise<CreateBackupResponse> => {
-  const response = await api.post<CreateBackupResponse>('/api/backups');
-  return response.data;
-};
-
-export const downloadBackup = async (fileName: string): Promise<Blob> => {
-  const response = await api.get(`/api/backups/${fileName}`, {
-    responseType: 'blob',
+export const createShortlink = async (data: CreateShortlinkRequest): Promise<CreateShortlinkResponse> => {
+  const baseURL = import.meta.env.VITE_API_URL || '';
+  const response = await fetch(`${baseURL}/api/shortlinks`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
   });
-  return response.data;
-};
-
-export const deleteBackup = async (fileName: string): Promise<void> => {
-  await api.delete(`/api/backups/${fileName}`);
-};
-
-export const restoreBackup = async (fileName: string): Promise<{ message: string; warning: string }> => {
-  const response = await api.post<{ message: string; warning: string }>(`/api/backups/${fileName}/restore`, {
-    confirm: 'yes-i-want-to-restore-this-backup',
-  });
-  return response.data;
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create shortlink');
+  }
+  return response.json();
 };
 

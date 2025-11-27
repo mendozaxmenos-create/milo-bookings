@@ -43,7 +43,7 @@ export function Availability() {
   const { data: hoursData, isLoading: hoursLoading } = useQuery<{ data: BusinessHour[] }>({
     queryKey: ['business-hours'],
     queryFn: async () => {
-      const response = await api.get('/api/availability/hours');
+      const response = await api.get('/availability/hours');
       return response.data;
     },
   });
@@ -52,7 +52,7 @@ export function Availability() {
   const { data: slotsData, isLoading: slotsLoading } = useQuery<{ data: AvailabilitySlot[] }>({
     queryKey: ['availability-slots'],
     queryFn: async () => {
-      const response = await api.get('/api/availability/slots');
+      const response = await api.get('/availability/slots');
       return response.data;
     },
   });
@@ -64,7 +64,7 @@ export function Availability() {
   // Mutación para actualizar horarios
   const updateHoursMutation = useMutation({
     mutationFn: async ({ dayOfWeek, data }: { dayOfWeek: number; data: Partial<BusinessHour> }) => {
-      const response = await api.put(`/api/availability/hours/${dayOfWeek}`, data);
+      const response = await api.put(`/availability/hours/${dayOfWeek}`, data);
       return response.data;
     },
     onSuccess: () => {
@@ -75,7 +75,7 @@ export function Availability() {
   // Mutación para crear bloque
   const createBlockMutation = useMutation({
     mutationFn: async (data: { date: string; start_time: string; end_time: string }) => {
-      const response = await api.post('/api/availability/slots', {
+      const response = await api.post('/availability/slots', {
         ...data,
         is_blocked: true,
       });
@@ -91,7 +91,7 @@ export function Availability() {
   // Mutación para eliminar bloque
   const deleteBlockMutation = useMutation({
     mutationFn: async (id: string) => {
-      await api.delete(`/api/availability/slots/${id}`);
+      await api.delete(`/availability/slots/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['availability-slots'] });

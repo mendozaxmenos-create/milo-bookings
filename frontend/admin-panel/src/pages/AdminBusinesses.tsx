@@ -1,15 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getBusinesses,
   getBusinessQR,
   createBusiness,
+  updateBusiness,
   deleteBusiness,
   activateBusiness,
   reconnectBusinessBot,
   getSubscriptionPrice,
   updateSubscriptionPrice,
-  updateBusiness,
   type Business,
   type CreateBusinessRequest,
 } from '../services/api';
@@ -19,35 +19,14 @@ export function AdminBusinesses() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [showPriceModal, setShowPriceModal] = useState(false);
-  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
-  const [credentialsBusiness, setCredentialsBusiness] = useState<Business | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
-  const [planSelectionOverrides, setPlanSelectionOverrides] = useState<Record<string, 'basic' | 'premium'>>({});
-  const [planUpdatingId, setPlanUpdatingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['admin-businesses'],
     queryFn: getBusinesses,
-    refetchInterval: false, // No hacer polling automático
-    refetchOnWindowFocus: false, // No refrescar al cambiar de ventana
-    staleTime: 5 * 60 * 1000, // Considerar datos válidos por 5 minutos
-    retry: 1, // Solo reintentar 1 vez si falla
   });
-  
-  // Log para debugging - ver qué datos se reciben
-  useEffect(() => {
-    if (data) {
-      console.log('[AdminBusinesses] Datos recibidos:', {
-        total: data?.data?.length || 0,
-        businesses: data?.data?.map((b: Business) => ({ id: b.id, name: b.name, is_active: b.is_active })) || [],
-      });
-    }
-    if (error) {
-      console.error('[AdminBusinesses] Error cargando negocios:', error);
-    }
-  }, [data, error]);
 
   const createMutation = useMutation({
     mutationFn: createBusiness,
@@ -55,9 +34,13 @@ export function AdminBusinesses() {
       queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
       setShowCreateModal(false);
     },
-    onError: (error: any) => {
-      console.error('Error creating business:', error);
-      // El error se captura y se muestra en el modal
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<CreateBusinessRequest> }) =>
+      updateBusiness(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
     },
   });
 
@@ -79,42 +62,11 @@ export function AdminBusinesses() {
     mutationFn: reconnectBusinessBot,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
-      // Esperar más tiempo para que el bot se inicialice y genere el QR
       setTimeout(() => {
         if (selectedBusiness) {
           loadQRCode(selectedBusiness.id);
         }
-      }, 5000); // 5 segundos para dar tiempo a que el bot genere el QR
-    },
-  });
-
-  const updateBusinessMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CreateBusinessRequest> }) => updateBusiness(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
-    },
-  });
-
-  const updatePlanMutation = useMutation({
-    mutationFn: ({ id, plan_type }: { id: string; plan_type: 'basic' | 'premium' }) => updateBusiness(id, { plan_type }),
-    onMutate: (variables) => {
-      setPlanUpdatingId(variables.id);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
-    },
-    onError: (error) => {
-      console.error('[AdminBusinesses] Error actualizando plan:', error);
-    },
-    onSettled: (_data, _error, variables) => {
-      setPlanUpdatingId(null);
-      if (variables?.id) {
-        setPlanSelectionOverrides((prev) => {
-          const copy = { ...prev };
-          delete copy[variables.id];
-          return copy;
-        });
-      }
+      }, 2000);
     },
   });
 
@@ -131,45 +83,24 @@ export function AdminBusinesses() {
     },
   });
 
-  const loadQRCode = async (businessId: string): Promise<boolean> => {
+  const loadQRCode = async (businessId: string) => {
     try {
       const response = await getBusinessQR(businessId);
       if (response.data.qr) {
         setQrCode(response.data.qr);
-        return true; // QR encontrado, detener polling
-      } else if (response.data.status === 'authenticated') {
-        // Bot ya está autenticado
-        setQrCode('AUTHENTICATED');
-        return true; // Bot autenticado, detener polling
-      } else if (response.data.status === 'not_available') {
-        // No hay QR disponible (pero no es un error)
-        setQrCode(null);
-        return false; // Continuar polling
       } else {
         setQrCode(null);
-        return false; // Continuar polling
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error loading QR:', error);
       setQrCode(null);
-      
-      // Solo loggear errores de red reales, no 404s (ahora el backend devuelve 200)
-      if (error?.code === 'ERR_NETWORK' || error?.response?.status >= 500) {
-        console.warn('Error de red al cargar QR. El servidor puede estar caído.');
-        throw error; // Lanzar error para detener polling
-      } else if (error?.response?.status === 404) {
-        // Esto no debería pasar ahora, pero por si acaso
-        console.warn('QR no disponible. El bot puede necesitar ser reconectado.');
-      }
-      return false; // Continuar polling en caso de otros errores
     }
   };
 
-  const handleShowQR = (business: Business) => {
+  const handleShowQR = async (business: Business) => {
     setSelectedBusiness(business);
-    setQrCode(null); // Resetear QR antes de mostrar modal
     setShowQRModal(true);
-    // El modal manejará el polling automáticamente
+    await loadQRCode(business.id);
   };
 
   const handleReconnectBot = async (businessId: string) => {
@@ -215,61 +146,6 @@ export function AdminBusinesses() {
         {statusInfo.label}
       </span>
     );
-  };
-
-  const renderPlanBadge = (plan?: string) => {
-    const type = plan || 'basic';
-    const isPremium = type === 'premium';
-    return (
-      <span
-        style={{
-          padding: '0.25rem 0.5rem',
-          borderRadius: '4px',
-          backgroundColor: isPremium ? '#6f42c1' : '#0d6efd',
-          color: 'white',
-          fontSize: '0.75rem',
-          fontWeight: 600,
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '0.25rem',
-        }}
-      >
-        {isPremium ? '⭐ Plan Premium' : '📦 Plan Básico'}
-      </span>
-    );
-  };
-
-  const handlePlanChange = (business: Business, newPlan: 'basic' | 'premium') => {
-    const currentPlan = business.plan_type || 'basic';
-    if (newPlan === currentPlan) {
-      setPlanSelectionOverrides((prev) => {
-        const copy = { ...prev };
-        delete copy[business.id];
-        return copy;
-      });
-      return;
-    }
-
-    const confirmMessage =
-      newPlan === 'premium'
-        ? `¿Deseas actualizar el negocio "${business.name}" al plan Premium? Obtendrá obras sociales y recursos múltiples.`
-        : `¿Deseas cambiar "${business.name}" al plan Básico? Se limitará a un solo servicio y se desactivarán funciones avanzadas.`;
-
-    if (!window.confirm(confirmMessage)) {
-      setPlanSelectionOverrides((prev) => {
-        const copy = { ...prev };
-        delete copy[business.id];
-        return copy;
-      });
-      return;
-    }
-
-    setPlanSelectionOverrides((prev) => ({
-      ...prev,
-      [business.id]: newPlan,
-    }));
-
-    updatePlanMutation.mutate({ id: business.id, plan_type: newPlan });
   };
 
   if (isLoading) {
@@ -337,7 +213,6 @@ export function AdminBusinesses() {
                       🎁 PRUEBA
                     </span>
                   )}
-                  {renderPlanBadge(business.plan_type)}
                   {!business.is_active && (
                     <span style={{ marginLeft: '0.5rem', color: '#6c757d', fontSize: '0.875rem' }}>
                       (Inactivo)
@@ -377,36 +252,12 @@ export function AdminBusinesses() {
                   <div>
                     <strong>Estado Bot:</strong> {getStatusBadge(business.bot_status)}
                   </div>
-                  <div style={{ gridColumn: 'span 2' }}>
-                    <strong>Plan:</strong>{' '}
-                    <select
-                      value={planSelectionOverrides[business.id] ?? business.plan_type ?? 'basic'}
-                      onChange={(e) => handlePlanChange(business, e.target.value as 'basic' | 'premium')}
-                      disabled={planUpdatingId === business.id && updatePlanMutation.isPending}
-                      style={{
-                        marginLeft: '0.5rem',
-                        padding: '0.35rem 0.75rem',
-                        borderRadius: '4px',
-                        border: '1px solid #ccc',
-                        minWidth: '160px',
-                      }}
-                    >
-                      <option value="basic">Plan Básico</option>
-                      <option value="premium">Plan Premium</option>
-                    </select>
-                    {planUpdatingId === business.id && updatePlanMutation.isPending && (
-                      <span style={{ marginLeft: '0.5rem', color: '#6c757d', fontSize: '0.85rem' }}>
-                        Actualizando plan...
-                      </span>
-                    )}
-                  </div>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
                 <button
                   onClick={() => {
-                    setCredentialsBusiness(business);
-                    setShowCredentialsModal(true);
+                    window.open(`/?business=${business.id}`, '_blank');
                   }}
                   style={{
                     padding: '0.5rem 1rem',
@@ -487,77 +338,7 @@ export function AdminBusinesses() {
             setSelectedBusiness(null);
             setQrCode(null);
           }}
-                 onRefresh={async () => {
-                   return await loadQRCode(selectedBusiness.id);
-                 }}
-        />
-      )}
-
-      {showCredentialsModal && credentialsBusiness && (
-        <CredentialsModal
-          business={
-            // Buscar el negocio actualizado en los datos refrescados, o usar el que tenemos en estado
-            data?.data?.find((b) => b.id === credentialsBusiness.id) || credentialsBusiness
-          }
-          onClose={() => {
-            setShowCredentialsModal(false);
-            setCredentialsBusiness(null);
-          }}
-          onUpdate={(businessId, whatsappNumber) => {
-            console.log('[AdminBusinesses] Actualizando número de WhatsApp:', {
-              businessId,
-              whatsappNumber,
-            });
-            updateBusinessMutation.mutate(
-              {
-                id: businessId,
-                data: { whatsapp_number: whatsappNumber },
-              },
-              {
-                onSuccess: async (response) => {
-                  console.log('[AdminBusinesses] Actualización exitosa:', response);
-                  // Invalidar la query para refrescar los datos del negocio
-                  // React Query automáticamente hará refetch cuando los datos estén listos
-                  await queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
-                  // Hacer refetch inmediatamente y esperar los resultados
-                  try {
-                    const refetchResult = await queryClient.refetchQueries({ 
-                      queryKey: ['admin-businesses'],
-                      exact: true,
-                    });
-                    
-                    // refetchQueries retorna un array de QueryObserverResult
-                    // Buscar el resultado que tenga los datos
-                    if (Array.isArray(refetchResult)) {
-                      for (const result of refetchResult) {
-                        if (result?.data && typeof result.data === 'object' && 'data' in result.data) {
-                          const businessesData = (result.data as { data: Business[] }).data;
-                          if (Array.isArray(businessesData)) {
-                            const updatedBusiness = businessesData.find((b: Business) => b.id === businessId);
-                            if (updatedBusiness) {
-                              console.log('[AdminBusinesses] Actualizando credentialsBusiness con datos nuevos:', {
-                                old: credentialsBusiness.whatsapp_number,
-                                new: updatedBusiness.whatsapp_number,
-                              });
-                              setCredentialsBusiness(updatedBusiness);
-                              break;
-                            }
-                          }
-                        }
-                      }
-                    }
-                  } catch (error) {
-                    console.error('[AdminBusinesses] Error al refetch:', error);
-                    // Si falla el refetch, invalidar igualmente para que se refresque automáticamente
-                  }
-                },
-                onError: (error) => {
-                  console.error('[AdminBusinesses] Error actualizando número:', error);
-                },
-              }
-            );
-          }}
-          isUpdating={updateBusinessMutation.isPending}
+          onRefresh={() => loadQRCode(selectedBusiness.id)}
         />
       )}
 
@@ -577,12 +358,10 @@ function CreateBusinessModal({
   onClose,
   onSubmit,
   isLoading,
-  error: mutationError,
 }: {
   onClose: () => void;
   onSubmit: (data: CreateBusinessRequest) => void;
   isLoading: boolean;
-  error?: any;
 }) {
   const [formData, setFormData] = useState<CreateBusinessRequest>({
     name: '',
@@ -592,25 +371,10 @@ function CreateBusinessModal({
     owner_phone: '',
     is_active: true,
     is_trial: false,
-    plan_type: 'basic',
   });
-  const [error, setError] = useState<string>('');
-
-  // Actualizar error cuando cambia mutationError
-  useEffect(() => {
-    if (mutationError) {
-      const errorMessage = mutationError?.response?.data?.error 
-        || mutationError?.message 
-        || 'Error al crear el negocio. Por favor, intenta de nuevo.';
-      setError(errorMessage);
-    } else {
-      setError('');
-    }
-  }, [mutationError]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError(''); // Limpiar error anterior
     onSubmit(formData);
   };
 
@@ -639,18 +403,6 @@ function CreateBusinessModal({
         }}
       >
         <h2 style={{ marginTop: 0 }}>Nuevo Negocio</h2>
-        {error && (
-          <div style={{
-            padding: '0.75rem',
-            marginBottom: '1rem',
-            backgroundColor: '#fee',
-            color: '#c00',
-            borderRadius: '4px',
-            border: '1px solid #fcc',
-          }}>
-            {error}
-          </div>
-        )}
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem' }}>Nombre</label>
@@ -681,61 +433,25 @@ function CreateBusinessModal({
               style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
             />
           </div>
-          <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#e7f3ff', borderRadius: '4px', border: '2px solid #007bff' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#0056b3' }}>
-              📱 Número de WhatsApp del Bot *
-            </label>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Número WhatsApp</label>
             <input
               type="text"
               value={formData.whatsapp_number}
-              onChange={(e) => {
-                let value = e.target.value;
-                // Auto-formatear: agregar + si no lo tiene al principio
-                if (value && !value.startsWith('+') && /^\d/.test(value)) {
-                  value = '+' + value;
-                }
-                setFormData({ ...formData, whatsapp_number: value });
-              }}
-              placeholder="+5492617542218"
-              required
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '2px solid #007bff',
-                borderRadius: '4px',
-                fontSize: '1rem',
-                fontFamily: 'monospace',
-                backgroundColor: 'white',
-              }}
-            />
-            <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#495057' }}>
-              ⚠️ <strong>Importante:</strong> Este número quedará asociado al bot y solo podrá cambiarse desde aquí o desde el modal de credenciales. 
-              Debe incluir el código de país (ej: +54 para Argentina, +1 para USA).
-            </div>
-            <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: '#6c757d' }}>
-              💡 Formato: +[código país][número sin 0 inicial]
-            </div>
-          </div>
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Teléfono del Dueño *</label>
-            <input
-              type="text"
-              value={formData.owner_phone}
-              onChange={(e) => {
-                let value = e.target.value;
-                // Auto-formatear: agregar + si no lo tiene al principio
-                if (value && !value.startsWith('+') && /^\d/.test(value)) {
-                  value = '+' + value;
-                }
-                setFormData({ ...formData, owner_phone: value });
-              }}
-              placeholder="+5492617542218"
+              onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value })}
               required
               style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
             />
-            <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: '#6c757d' }}>
-              Teléfono del propietario del negocio (para credenciales de acceso)
-            </div>
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Teléfono del Dueño</label>
+            <input
+              type="text"
+              value={formData.owner_phone}
+              onChange={(e) => setFormData({ ...formData, owner_phone: e.target.value })}
+              required
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+            />
           </div>
           <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '4px', border: '1px solid #dee2e6' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
@@ -754,30 +470,6 @@ function CreateBusinessModal({
                 </div>
               </div>
             </label>
-          </div>
-          <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#fff8e1', borderRadius: '4px', border: '1px solid #ffe58f' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#a15c00' }}>
-              📦 Plan del negocio
-            </label>
-            <select
-              value={formData.plan_type || 'basic'}
-              onChange={(e) => setFormData({ ...formData, plan_type: e.target.value as 'basic' | 'premium' })}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '2px solid #ffa940',
-                borderRadius: '4px',
-                backgroundColor: 'white',
-                fontWeight: 'bold',
-              }}
-            >
-              <option value="basic">Plan Básico - 1 servicio con pago único</option>
-              <option value="premium">Plan Premium - Obras sociales y recursos múltiples</option>
-            </select>
-            <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#795548' }}>
-              El plan básico limita a un único servicio y desactiva módulos avanzados (obras sociales, múltiples recursos, recordatorios). 
-              El plan premium habilita todas las funciones.
-            </div>
           </div>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
             <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer' }}>
@@ -802,113 +494,8 @@ function QRModal({
   business: Business;
   qrCode: string | null;
   onClose: () => void;
-  onRefresh: () => Promise<boolean>; // Ahora retorna boolean para indicar si debe continuar
+  onRefresh: () => void;
 }) {
-  const [isPolling, setIsPolling] = useState(false);
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
-  const attemptsRef = useRef(0);
-  const maxAttemptsRef = useRef(10); // Máximo de intentos
-  const isMountedRef = useRef(true);
-  
-  // Efecto para iniciar polling cuando se abre el modal
-  useEffect(() => {
-    isMountedRef.current = true;
-    
-    // Cargar QR inicial inmediatamente
-    const loadInitialQR = async () => {
-      try {
-        const found = await onRefresh();
-        if (found && isMountedRef.current) {
-          // QR encontrado o bot autenticado, no hacer polling
-          return;
-        }
-      } catch (error) {
-        console.error('[QR] Error cargando QR inicial:', error);
-      }
-      
-      // Si no hay QR y el componente sigue montado, iniciar polling
-      if (isMountedRef.current && !qrCode && !pollingRef.current) {
-        setIsPolling(true);
-        attemptsRef.current = 0;
-        maxAttemptsRef.current = 10;
-        
-        pollingRef.current = setInterval(async () => {
-          if (!isMountedRef.current) {
-            if (pollingRef.current) {
-              clearInterval(pollingRef.current);
-              pollingRef.current = null;
-            }
-            return;
-          }
-          
-          attemptsRef.current++;
-          console.log(`[QR] Polling intento ${attemptsRef.current}/${maxAttemptsRef.current} para ${business.name}`);
-          
-          try {
-            const found = await onRefresh();
-            
-            // Si encontramos QR o bot está autenticado, detener polling
-            if (found) {
-              console.log('[QR] QR encontrado o bot autenticado, deteniendo polling');
-              if (pollingRef.current) {
-                clearInterval(pollingRef.current);
-                pollingRef.current = null;
-              }
-              setIsPolling(false);
-              return;
-            }
-          } catch (error: any) {
-            // Si hay error de red (servidor caído), detener polling
-            if (error?.code === 'ERR_NETWORK' || error?.response?.status >= 500) {
-              console.warn('[QR] Error de red detectado, deteniendo polling');
-              if (pollingRef.current) {
-                clearInterval(pollingRef.current);
-                pollingRef.current = null;
-              }
-              setIsPolling(false);
-              return;
-            }
-            // Para otros errores, continuar
-            console.warn('[QR] Error en polling (continuando):', error?.message);
-          }
-          
-          // Si alcanzamos el máximo de intentos, parar
-          if (attemptsRef.current >= maxAttemptsRef.current) {
-            console.log('[QR] Máximo de intentos alcanzado, deteniendo polling');
-            if (pollingRef.current) {
-              clearInterval(pollingRef.current);
-              pollingRef.current = null;
-            }
-            setIsPolling(false);
-          }
-        }, 3000); // Intentar cada 3 segundos
-      }
-    };
-    
-    loadInitialQR();
-    
-    // Limpiar cuando el componente se desmonte
-    return () => {
-      isMountedRef.current = false;
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-      }
-      setIsPolling(false);
-      attemptsRef.current = 0;
-    };
-  }, [business.id]); // Solo ejecutar cuando cambia el business.id
-  
-  // Detener polling si encontramos QR
-  useEffect(() => {
-    if (qrCode && isPolling && pollingRef.current) {
-      clearInterval(pollingRef.current);
-      pollingRef.current = null;
-      setIsPolling(false);
-      attemptsRef.current = 0;
-    }
-  }, [qrCode, isPolling]);
-  
   return (
     <div
       style={{
@@ -934,73 +521,32 @@ function QRModal({
         }}
       >
         <h2 style={{ marginTop: 0 }}>QR Code - {business.name}</h2>
-        {qrCode === 'AUTHENTICATED' ? (
-          <div>
-            <div style={{ 
-              padding: '1rem', 
-              backgroundColor: '#d4edda', 
-              borderRadius: '4px', 
-              marginBottom: '1rem',
-              color: '#155724',
-            }}>
-              ✅ El bot ya está conectado a WhatsApp y autenticado.
-            </div>
-            <p style={{ color: '#6c757d', fontSize: '0.875rem' }}>
-              No se necesita escanear QR. El bot está funcionando correctamente.
-            </p>
-          </div>
-        ) : qrCode ? (
+        {qrCode ? (
           <>
             <div style={{ margin: '1rem 0' }}>
               <QRCode value={qrCode} size={256} />
             </div>
-            <p style={{ color: '#6c757d', fontSize: '0.875rem', marginBottom: '1rem' }}>
+            <p style={{ color: '#6c757d', fontSize: '0.875rem' }}>
               Escanea este código con WhatsApp para conectar el bot
-            </p>
-            <p style={{ color: '#856404', fontSize: '0.75rem', backgroundColor: '#fff3cd', padding: '0.5rem', borderRadius: '4px' }}>
-              ⚠️ El QR expira en 5 minutos. Si expira, haz clic en "Reconectar Bot" para generar uno nuevo.
             </p>
           </>
         ) : (
           <div>
-            <div style={{ 
-              padding: '1rem', 
-              backgroundColor: '#fff3cd', 
-              borderRadius: '4px', 
-              marginBottom: '1rem',
-              color: '#856404',
-            }}>
-              ⚠️ No hay QR disponible en este momento.
-            </div>
-            <p style={{ color: '#6c757d', fontSize: '0.875rem', marginBottom: '1rem' }}>
-              Esto puede suceder si:
-            </p>
-            <ul style={{ textAlign: 'left', color: '#6c757d', fontSize: '0.875rem', marginBottom: '1rem' }}>
-              <li>El bot ya está conectado a WhatsApp</li>
-              <li>El QR expiró (válido por 5 minutos)</li>
-              <li>El bot aún no se ha inicializado</li>
-            </ul>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button
-                onClick={onRefresh}
-                disabled={isPolling}
-                style={{
-                  padding: '0.5rem 1rem',
-                  backgroundColor: isPolling ? '#6c757d' : '#007bff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: isPolling ? 'not-allowed' : 'pointer',
-                }}
-              >
-                🔄 {isPolling ? 'Buscando...' : 'Refrescar'}
-              </button>
-              <p style={{ color: '#6c757d', fontSize: '0.75rem', width: '100%', marginTop: '0.5rem' }}>
-                {isPolling 
-                  ? 'El sistema está buscando el QR automáticamente. Si el bot está inicializándose, aparecerá en unos segundos.'
-                  : 'O haz clic en "Reconectar Bot" en la lista para generar un nuevo QR.'}
-              </p>
-            </div>
+            <p>El bot ya está conectado o no hay QR disponible.</p>
+            <button
+              onClick={onRefresh}
+              style={{
+                marginTop: '1rem',
+                padding: '0.5rem 1rem',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+              }}
+            >
+              Refrescar
+            </button>
           </div>
         )}
         <button
@@ -1017,456 +563,6 @@ function QRModal({
         >
           Cerrar
         </button>
-      </div>
-    </div>
-  );
-}
-
-function CredentialsModal({
-  business,
-  onClose,
-  onUpdate,
-  isUpdating,
-}: {
-  business: Business;
-  onClose: () => void;
-  onUpdate?: (businessId: string, whatsappNumber: string) => void;
-  isUpdating?: boolean;
-}) {
-  const [editingWhatsApp, setEditingWhatsApp] = useState(false);
-  const [newWhatsAppNumber, setNewWhatsAppNumber] = useState(business.whatsapp_number || '');
-  const [botRestarting, setBotRestarting] = useState(false);
-  const [botRestarted, setBotRestarted] = useState(false);
-  const previousIsUpdatingRef = useRef<boolean | undefined>(isUpdating);
-  const savedNumberRef = useRef<string>(business.whatsapp_number || '');
-  const hasStartedUpdateRef = useRef<boolean>(false); // Flag para rastrear si realmente iniciamos una actualización
-
-  // Actualizar el número cuando cambie el business prop (solo si no estamos editando)
-  useEffect(() => {
-    if (!editingWhatsApp) {
-      const currentBusinessNumber = business.whatsapp_number || '';
-      setNewWhatsAppNumber(currentBusinessNumber);
-      savedNumberRef.current = currentBusinessNumber;
-      hasStartedUpdateRef.current = false; // Reset el flag cuando salimos del modo de edición
-    }
-  }, [business.whatsapp_number, editingWhatsApp]);
-  
-  // Cerrar modo de edición cuando la actualización sea exitosa
-  useEffect(() => {
-    // Solo cerrar si:
-    // 1. Estamos en modo de edición
-    // 2. REALMENTE iniciamos una actualización (hasStartedUpdateRef.current === true)
-    // 3. La actualización terminó (isUpdating cambió de true a false)
-    // 4. El número en business coincide con el que guardamos (después de que se refresquen los datos)
-    if (
-      editingWhatsApp &&
-      hasStartedUpdateRef.current === true &&
-      previousIsUpdatingRef.current === true &&
-      isUpdating === false
-    ) {
-      // Esperar a que los datos se refresquen (el business prop se actualizará cuando la query se refetchee)
-      // Verificar si el número en business coincide con el que guardamos
-      const currentBusinessNumber = business.whatsapp_number || '';
-      console.log('[CredentialsModal] Verificando si cerrar modo de edición:', {
-        editingWhatsApp,
-        hasStartedUpdate: hasStartedUpdateRef.current,
-        wasUpdating: previousIsUpdatingRef.current,
-        isUpdating,
-        savedNumber: savedNumberRef.current,
-        currentBusinessNumber,
-        match: currentBusinessNumber === savedNumberRef.current,
-      });
-      
-      if (currentBusinessNumber === savedNumberRef.current && savedNumberRef.current !== '') {
-        console.log('[CredentialsModal] ✅ Actualización exitosa, datos refrescados, cerrando modo de edición');
-        setEditingWhatsApp(false);
-        savedNumberRef.current = currentBusinessNumber;
-        hasStartedUpdateRef.current = false; // Reset el flag
-        // Mostrar confirmación de que el bot se está reinicializando
-        setBotRestarting(false);
-        setBotRestarted(true);
-        // Ocultar el mensaje después de 5 segundos
-        setTimeout(() => {
-          setBotRestarted(false);
-        }, 5000);
-      } else {
-        console.log('[CredentialsModal] ⏳ Actualización terminó, pero datos aún no se han refrescado o no coinciden');
-        // Los datos se refrescarán cuando la query se invalide, y este useEffect se ejecutará de nuevo
-        // cuando business.whatsapp_number cambie al nuevo valor
-      }
-    }
-    
-    // Si el número en business cambió y estamos editando, y REALMENTE iniciamos una actualización,
-    // y la actualización ya terminó, verificar si coincide con el que guardamos
-    if (
-      editingWhatsApp &&
-      hasStartedUpdateRef.current === true &&
-      isUpdating === false &&
-      business.whatsapp_number === savedNumberRef.current &&
-      savedNumberRef.current !== ''
-    ) {
-      console.log('[CredentialsModal] ✅ Número actualizado detectado (después de cambio), cerrando modo de edición');
-      setEditingWhatsApp(false);
-      hasStartedUpdateRef.current = false; // Reset el flag
-      // Mostrar confirmación de que el bot se está reinicializando
-      setBotRestarting(false);
-      setBotRestarted(true);
-      // Ocultar el mensaje después de 5 segundos
-      setTimeout(() => {
-        setBotRestarted(false);
-      }, 5000);
-    }
-    
-    // Actualizar referencia del estado anterior de isUpdating
-    previousIsUpdatingRef.current = isUpdating;
-  }, [business.whatsapp_number, isUpdating, editingWhatsApp]);
-
-  // Determinar la contraseña correcta según el negocio
-  const defaultPassword = business.id === 'demo-business-001' ? 'demo123' : 'changeme123';
-  
-  const fields = [
-    { label: 'Business ID', value: business.id },
-    { label: 'Teléfono Owner', value: business.owner_phone || business.phone || 'Sin teléfono' },
-    { label: 'Contraseña temporal', value: defaultPassword },
-  ];
-
-  const handleCopy = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      alert('Copiado al portapapeles');
-    } catch (error) {
-      console.error('Error copying text:', error);
-      alert('No se pudo copiar. Copia manualmente.');
-    }
-  };
-
-  const handleSaveWhatsApp = () => {
-    const numberToSave = newWhatsAppNumber.trim();
-    console.log('[CredentialsModal] Guardando número de WhatsApp:', {
-      businessId: business.id,
-      currentNumber: business.whatsapp_number,
-      newNumber: numberToSave,
-    });
-    
-    if (onUpdate && numberToSave) {
-      // Verificar si el número cambió
-      const numberChanged = numberToSave !== business.whatsapp_number;
-      
-      // Marcar que realmente iniciamos una actualización
-      hasStartedUpdateRef.current = true;
-      // Guardar el número que vamos a enviar en el ref para comparar después
-      savedNumberRef.current = numberToSave;
-      
-      // Si el número cambió, mostrar indicador de reinicio del bot
-      if (numberChanged) {
-        setBotRestarting(true);
-        setBotRestarted(false);
-      }
-      
-      // Guardar el número que vamos a enviar antes de llamar a onUpdate
-      const numberToUpdate = numberToSave;
-      onUpdate(business.id, numberToUpdate);
-      // NO cerrar el modo de edición inmediatamente, esperar a que la actualización termine
-      // El onSuccess en el componente padre invalidará las queries y actualizará el business prop
-    } else {
-      console.warn('[CredentialsModal] No se puede guardar: onUpdate o numberToSave faltante', {
-        hasOnUpdate: !!onUpdate,
-        hasNumber: !!numberToSave,
-      });
-    }
-  };
-
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 1000,
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: 'white',
-          padding: '2rem',
-          borderRadius: '8px',
-          width: '100%',
-          maxWidth: '480px',
-        }}
-      >
-        <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Credenciales - {business.name}</h2>
-        <p style={{ color: '#6c757d', marginBottom: '1rem' }}>
-          Usa estas credenciales para ingresar en una ventana nueva como propietario. Haz clic en “Copiar” para evitar errores.
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {fields.map((field) => (
-            <div key={field.label} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <strong>{field.label}</strong>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input
-                  value={field.value}
-                  readOnly
-                  style={{
-                    flex: 1,
-                    padding: '0.5rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontFamily: 'monospace',
-                  }}
-                />
-                <button
-                  onClick={() => handleCopy(field.value)}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    backgroundColor: '#007bff',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Copiar
-                </button>
-              </div>
-            </div>
-          ))}
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: '0.5rem',
-            padding: '1rem',
-            backgroundColor: '#e7f3ff',
-            borderRadius: '4px',
-            border: '2px solid #007bff',
-            marginTop: '0.5rem',
-          }}>
-            <div>
-              <strong style={{ color: '#0056b3', fontSize: '1rem' }}>📱 Número de WhatsApp del Bot</strong>
-              <p style={{ fontSize: '0.75rem', color: '#495057', marginTop: '0.25rem', marginBottom: 0 }}>
-                Este número quedará asociado al bot de este negocio. Solo puede cambiarse desde aquí.
-              </p>
-            </div>
-            {editingWhatsApp ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <input
-                  type="text"
-                  value={newWhatsAppNumber}
-                  onChange={(e) => {
-                    let value = e.target.value;
-                    // Auto-formatear: agregar + si no lo tiene al principio
-                    if (value && !value.startsWith('+') && /^\d/.test(value)) {
-                      value = '+' + value;
-                    }
-                    setNewWhatsAppNumber(value);
-                  }}
-                  placeholder="+5492617542218"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '2px solid #007bff',
-                    borderRadius: '4px',
-                    fontFamily: 'monospace',
-                    fontSize: '1rem',
-                    backgroundColor: 'white',
-                  }}
-                />
-                <div style={{ fontSize: '0.75rem', color: '#6c757d' }}>
-                  💡 Formato: +[código país][número sin 0 inicial] (ej: +54 para Argentina)
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button
-                  onClick={handleSaveWhatsApp}
-                  disabled={isUpdating || !newWhatsAppNumber.trim()}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    backgroundColor: '#28a745',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: isUpdating ? 'not-allowed' : 'pointer',
-                    opacity: isUpdating ? 0.6 : 1,
-                  }}
-                >
-                  {isUpdating ? 'Guardando...' : 'Guardar'}
-                </button>
-                <button
-                  onClick={() => {
-                    setEditingWhatsApp(false);
-                    setNewWhatsAppNumber(business.whatsapp_number || '');
-                  }}
-                  disabled={isUpdating}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    backgroundColor: '#6c757d',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: isUpdating ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  Cancelar
-                </button>
-              </div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input
-                    value={business.whatsapp_number || 'Sin número configurado'}
-                    readOnly
-                    style={{
-                      flex: 1,
-                      padding: '0.75rem',
-                      border: business.whatsapp_number ? '2px solid #007bff' : '1px solid #ddd',
-                      borderRadius: '4px',
-                      fontFamily: 'monospace',
-                      fontSize: '1rem',
-                      backgroundColor: business.whatsapp_number ? 'white' : '#f8f9fa',
-                      fontWeight: business.whatsapp_number ? 'bold' : 'normal',
-                      color: business.whatsapp_number ? '#212529' : '#6c757d',
-                    }}
-                  />
-                  <button
-                    onClick={() => handleCopy(business.whatsapp_number || '')}
-                    disabled={!business.whatsapp_number}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      backgroundColor: '#007bff',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: business.whatsapp_number ? 'pointer' : 'not-allowed',
-                      opacity: business.whatsapp_number ? 1 : 0.6,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    Copiar
-                  </button>
-                  <button
-                    onClick={() => {
-                      console.log('[CredentialsModal] Botón Editar clickeado, activando modo de edición');
-                      // Reset el flag cuando entramos en modo de edición
-                      hasStartedUpdateRef.current = false;
-                      setEditingWhatsApp(true);
-                      setBotRestarting(false);
-                      setBotRestarted(false);
-                      // Asegurar que el valor inicial es el número actual del negocio
-                      setNewWhatsAppNumber(business.whatsapp_number || '');
-                    }}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      backgroundColor: '#ffc107',
-                      color: '#212529',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontWeight: 'bold',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    ✏️ Editar
-                  </button>
-                </div>
-                {!business.whatsapp_number && (
-                  <p style={{ fontSize: '0.75rem', color: '#856404', margin: 0, padding: '0.5rem', backgroundColor: '#fff3cd', borderRadius: '4px' }}>
-                    ⚠️ <strong>Importante:</strong> Sin número de WhatsApp configurado. El bot no funcionará hasta que se configure un número aquí.
-                  </p>
-                )}
-                {botRestarting && (
-                  <div style={{ 
-                    fontSize: '0.875rem', 
-                    color: '#004085', 
-                    margin: 0, 
-                    padding: '0.75rem', 
-                    backgroundColor: '#cce5ff', 
-                    borderRadius: '4px',
-                    border: '1px solid #007bff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                  }}>
-                    <div style={{ 
-                      width: '16px', 
-                      height: '16px', 
-                      border: '2px solid #007bff',
-                      borderTop: '2px solid transparent',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite',
-                    }}></div>
-                    <strong>🔄 Reiniciando bot...</strong> El bot se está reinicializando con el nuevo número. Esto puede tardar unos segundos. Se generará un nuevo QR code.
-                  </div>
-                )}
-                {botRestarted && !botRestarting && (
-                  <div style={{ 
-                    fontSize: '0.875rem', 
-                    color: '#155724', 
-                    margin: 0, 
-                    padding: '0.75rem', 
-                    backgroundColor: '#d4edda', 
-                    borderRadius: '4px',
-                    border: '1px solid #28a745',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                  }}>
-                    ✅ <strong>¡Bot reinicializado exitosamente!</strong> El bot ahora está configurado con el nuevo número. Si es necesario, escanea el nuevo QR code desde "Ver QR".
-                  </div>
-                )}
-                {business.whatsapp_number && !botRestarting && !botRestarted && (
-                  <p style={{ fontSize: '0.75rem', color: '#155724', margin: 0, padding: '0.5rem', backgroundColor: '#d4edda', borderRadius: '4px' }}>
-                    ✅ Número configurado. El bot está asociado a este número y solo puede cambiarse desde este campo.
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => {
-              const params = new URLSearchParams();
-              params.set('business', business.id);
-              if (business.owner_phone || business.phone) {
-                params.set('phone', (business.owner_phone || business.phone) ?? '');
-              }
-                    params.set('forceLogout', '1');
-              window.open(`/login?${params.toString()}`, '_blank');
-            }}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: '#17a2b8',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              flex: '1 1 auto',
-              minWidth: '180px',
-            }}
-          >
-            Abrir panel en nueva pestaña
-          </button>
-          <button
-            onClick={onClose}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: '#6c757d',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              flex: '1 1 auto',
-              minWidth: '120px',
-            }}
-          >
-            Cerrar
-          </button>
-        </div>
       </div>
     </div>
   );

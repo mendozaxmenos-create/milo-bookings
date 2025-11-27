@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Services } from './pages/Services';
@@ -6,27 +6,9 @@ import { Bookings } from './pages/Bookings';
 import { Availability } from './pages/Availability';
 import { Settings } from './pages/Settings';
 import { AdminBusinesses } from './pages/AdminBusinesses';
+import { Shortlinks } from './pages/Shortlinks';
 import { useAuthStore } from './store/authStore';
 import { Layout } from './components/Layout';
-
-function LoginRoute() {
-  const { isAuthenticated, user } = useAuthStore();
-  const [searchParams] = useSearchParams();
-  const forceLogout = searchParams.get('forceLogout');
-  const isSuperAdmin = user?.is_system_user && user?.role === 'super_admin';
-  
-  // Si hay forceLogout, no redirigir (dejar que Login maneje el logout)
-  if (forceLogout === '1') {
-    return <Login />;
-  }
-  
-  // Si está autenticado y no hay forceLogout, redirigir
-  if (isAuthenticated) {
-    return <Navigate to={isSuperAdmin ? "/admin/businesses" : "/dashboard"} replace />;
-  }
-  
-  return <Login />;
-}
 
 function App() {
   const { isAuthenticated, user } = useAuthStore();
@@ -37,7 +19,7 @@ function App() {
       <Routes>
         <Route
           path="/login"
-          element={<LoginRoute />}
+          element={isAuthenticated ? <Navigate to={isSuperAdmin ? "/admin/businesses" : "/dashboard"} replace /> : <Login />}
         />
         {isSuperAdmin ? (
           <Route
@@ -45,6 +27,7 @@ function App() {
             element={isAuthenticated ? <Layout /> : <Navigate to="/login" replace />}
           >
             <Route path="businesses" element={<AdminBusinesses />} />
+            <Route path="shortlinks" element={<Shortlinks />} />
             <Route index element={<Navigate to="/admin/businesses" replace />} />
           </Route>
         ) : (
