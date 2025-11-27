@@ -4,7 +4,6 @@ import {
   getBusinesses,
   getBusinessQR,
   createBusiness,
-  updateBusiness,
   deleteBusiness,
   activateBusiness,
   reconnectBusinessBot,
