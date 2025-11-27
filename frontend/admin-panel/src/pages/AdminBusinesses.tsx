@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getBusinesses,
@@ -36,13 +36,13 @@ export function AdminBusinesses() {
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CreateBusinessRequest> }) =>
-      updateBusiness(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
-    },
-  });
+  // const updateMutation = useMutation({
+  //   mutationFn: ({ id, data }: { id: string; data: Partial<CreateBusinessRequest> }) =>
+  //     updateBusiness(id, data),
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
+  //   },
+  // });
 
   const deleteMutation = useMutation({
     mutationFn: deleteBusiness,

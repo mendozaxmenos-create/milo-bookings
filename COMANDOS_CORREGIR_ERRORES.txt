@@ -1,0 +1,12 @@
+# Ejecuta estos comandos para subir las correcciones de TypeScript
+
+cd C:\Users\gusta\Desktop\milo-bookings
+git checkout main
+git pull origin main
+git add -A
+git commit -m "fix: Corregir errores de TypeScript para build en Vercel"
+git checkout -b fix/corregir-errores-typescript
+git push -u origin fix/corregir-errores-typescript
+
+# Después crea un PR y haz merge
+
