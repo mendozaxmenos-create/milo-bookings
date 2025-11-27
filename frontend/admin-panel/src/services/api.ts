@@ -58,6 +58,7 @@ export interface LoginResponse {
     business_id: string;
     phone: string;
     role: string;
+    is_system_user?: boolean;
   };
 }
 

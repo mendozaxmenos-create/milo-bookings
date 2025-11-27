@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getShortlinks,
   createShortlink,
-  type Shortlink,
   type CreateShortlinkRequest,
 } from '../services/api';
 
