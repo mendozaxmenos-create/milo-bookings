@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import QRCode from 'qrcode.react';
 import {
   getShortlinks,
   createShortlink,
   type CreateShortlinkRequest,
+  type Shortlink,
 } from '../services/api';
 
 export function Shortlinks() {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [selectedShortlink, setSelectedShortlink] = useState<Shortlink | null>(null);
   const [formData, setFormData] = useState<CreateShortlinkRequest>({
     name: '',
     slug: '',
@@ -57,6 +61,24 @@ export function Shortlinks() {
   const copyToClipboard = (url: string) => {
     navigator.clipboard.writeText(url);
     // Podrías agregar una notificación aquí
+  };
+
+  const handleShowQR = (shortlink: Shortlink) => {
+    setSelectedShortlink(shortlink);
+    setShowQRModal(true);
+  };
+
+  const downloadQR = () => {
+    if (!selectedShortlink) return;
+    
+    const canvas = document.querySelector(`#qr-${selectedShortlink.slug} canvas`) as HTMLCanvasElement;
+    if (canvas) {
+      const url = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `qr-${selectedShortlink.slug}.png`;
+      link.href = url;
+      link.click();
+    }
   };
 
   if (isLoading) {
@@ -196,11 +218,103 @@ export function Shortlinks() {
                     >
                       🔗 Probar
                     </a>
+                    <button
+                      onClick={() => handleShowQR(shortlink)}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        backgroundColor: '#17a2b8',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                      }}
+                    >
+                      📱 Ver QR
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Modal de QR Code */}
+      {showQRModal && selectedShortlink && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => {
+            setShowQRModal(false);
+            setSelectedShortlink(null);
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              padding: '2rem',
+              borderRadius: '8px',
+              textAlign: 'center',
+              maxWidth: '400px',
+              width: '90%',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ marginTop: 0 }}>QR Code - {selectedShortlink.name}</h2>
+            <div style={{ margin: '1rem 0', display: 'flex', justifyContent: 'center' }}>
+              <div id={`qr-${selectedShortlink.slug}`}>
+                <QRCode value={selectedShortlink.url} size={256} />
+              </div>
+            </div>
+            <p style={{ color: '#6c757d', fontSize: '0.875rem', marginBottom: '1rem' }}>
+              Escanea este código para acceder al shortlink
+            </p>
+            <p style={{ color: '#6c757d', fontSize: '0.75rem', marginBottom: '1rem', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+              {selectedShortlink.url}
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+              <button
+                onClick={downloadQR}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}
+              >
+                💾 Descargar QR
+              </button>
+              <button
+                onClick={() => {
+                  setShowQRModal(false);
+                  setSelectedShortlink(null);
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
