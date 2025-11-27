@@ -17,6 +17,7 @@ import insuranceRoutes from './routes/insurance.js';
 import serviceResourcesRoutes from './routes/serviceResources.js';
 import backupsRoutes from './routes/backups.js';
 import whatsappRoutes from './routes/whatsapp.js';
+import shortlinksRoutes from './routes/shortlinks.js';
 
 dotenv.config();
 
@@ -209,6 +210,7 @@ app.get('/', (req, res) => {
       bot: '/api/bot',
       admin: '/api/admin',
       whatsapp: '/api/whatsapp/webhook',
+      shortlinks: '/api/shortlinks',
     },
   };
   console.log('[Root] Enviando respuesta');
@@ -368,6 +370,7 @@ app.use('/api/insurance', insuranceRoutes);
 app.use('/api/service-resources', serviceResourcesRoutes);
 app.use('/api/backups', backupsRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/shortlinks', shortlinksRoutes);
 
 // Error handling con logging estructurado
 app.use((err, req, res, next) => {
