@@ -27,14 +27,14 @@ export function Services() {
   const { data: services, isLoading } = useQuery<{ data: Service[] }>({
     queryKey: ['services'],
     queryFn: async () => {
-      const response = await api.get('/services');
+      const response = await api.get('/api/services');
       return response.data;
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: Partial<Service>) => {
-      const response = await api.post('/services', data);
+      const response = await api.post('/api/services', data);
       return response.data;
     },
     onSuccess: () => {
@@ -46,7 +46,7 @@ export function Services() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Service> }) => {
-      const response = await api.put(`/services/${id}`, data);
+      const response = await api.put(`/api/services/${id}`, data);
       return response.data;
     },
     onSuccess: () => {
@@ -59,7 +59,7 @@ export function Services() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await api.delete(`/services/${id}`);
+      await api.delete(`/api/services/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services'] });
@@ -68,7 +68,7 @@ export function Services() {
 
   const toggleMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.patch(`/services/${id}/toggle`);
+      const response = await api.patch(`/api/services/${id}/toggle`);
       return response.data;
     },
     onSuccess: () => {

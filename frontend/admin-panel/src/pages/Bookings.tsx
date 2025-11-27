@@ -27,14 +27,14 @@ export function Bookings() {
       const params = new URLSearchParams();
       if (filters.status) params.append('status', filters.status);
       if (filters.date) params.append('date', filters.date);
-      const response = await api.get(`/bookings?${params.toString()}`);
+      const response = await api.get(`/api/bookings?${params.toString()}`);
       return response.data;
     },
   });
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const response = await api.patch(`/bookings/${id}/status`, { status });
+      const response = await api.patch(`/api/bookings/${id}/status`, { status });
       return response.data;
     },
     onSuccess: () => {
@@ -44,7 +44,7 @@ export function Bookings() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await api.delete(`/bookings/${id}`);
+      await api.delete(`/api/bookings/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });

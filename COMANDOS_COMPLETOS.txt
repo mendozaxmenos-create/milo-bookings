@@ -1,0 +1,42 @@
+# ========================================
+# COMANDOS PARA SUBIR CORRECCIONES DE API
+# ========================================
+# Ejecuta estos comandos UNO POR UNO en tu terminal
+# Copia y pega cada comando, espera a que termine, luego el siguiente
+# ========================================
+
+# 1. Ir al directorio del proyecto
+cd C:\Users\gusta\Desktop\milo-bookings
+
+# 2. Cambiar a rama main
+git checkout main
+
+# 3. Actualizar desde GitHub
+git pull origin main
+
+# 4. Agregar todos los cambios
+git add -A
+
+# 5. Ver qué se va a commitear (opcional, solo para verificar)
+git status
+
+# 6. Hacer commit
+git commit -m "fix: Corregir todas las rutas de API - agregar prefijo /api a todas las rutas"
+
+# 7. Crear rama nueva
+git checkout -b fix/corregir-rutas-api
+
+# 8. Subir la rama a GitHub
+git push -u origin fix/corregir-rutas-api
+
+# ========================================
+# DESPUÉS DEL PUSH:
+# ========================================
+# 1. Ve a: https://github.com/mendozaxmenos-create/milo-bookings
+# 2. Verás un banner: "fix/corregir-rutas-api had recent pushes"
+# 3. Clic en "Compare & pull request"
+# 4. Clic en "Create Pull Request"
+# 5. Clic en "Merge Pull Request"
+# 6. Vercel debería detectar el cambio y hacer deployment automáticamente
+# ========================================
+
