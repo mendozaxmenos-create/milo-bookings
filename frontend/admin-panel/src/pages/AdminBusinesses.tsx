@@ -6,7 +6,6 @@ import {
   createBusiness,
   deleteBusiness,
   activateBusiness,
-  reconnectBusinessBot,
   getSubscriptionPrice,
   updateSubscriptionPrice,
   migrateShortlinksToBusinesses,
@@ -58,17 +57,6 @@ export function AdminBusinesses() {
     },
   });
 
-  const reconnectMutation = useMutation({
-    mutationFn: reconnectBusinessBot,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
-      setTimeout(() => {
-        if (selectedBusiness) {
-          loadQRCode(selectedBusiness.id);
-        }
-      }, 2000);
-    },
-  });
 
   const { data: priceData } = useQuery({
     queryKey: ['subscription-price'],
@@ -116,11 +104,6 @@ export function AdminBusinesses() {
     await loadQRCode(business.id);
   };
 
-  const handleReconnectBot = async (businessId: string) => {
-    if (confirm('¿Estás seguro de que quieres reconectar el bot? Esto generará un nuevo QR code.')) {
-      reconnectMutation.mutate(businessId);
-    }
-  };
 
   const handleCreate = (data: CreateBusinessRequest) => {
     createMutation.mutate(data);
@@ -128,11 +111,13 @@ export function AdminBusinesses() {
 
   const handleToggleActive = (business: Business) => {
     if (business.is_active) {
-      if (confirm(`¿Desactivar el negocio "${business.name}"?`)) {
+      if (confirm(`¿Desactivar el negocio "${business.name}"?\n\nEsto dejará el negocio inactivo (no se borrará) y desconectará el bot. Se puede reactivar después si el cliente regulariza el pago.`)) {
         deleteMutation.mutate(business.id);
       }
     } else {
-      activateMutation.mutate(business.id);
+      if (confirm(`¿Reactivar el negocio "${business.name}"?`)) {
+        activateMutation.mutate(business.id);
+      }
     }
   };
 
