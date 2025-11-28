@@ -12,6 +12,7 @@ export function Shortlinks() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [selectedShortlink, setSelectedShortlink] = useState<Shortlink | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState<CreateShortlinkRequest>({
     name: '',
     slug: '',
@@ -20,10 +21,16 @@ export function Shortlinks() {
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error: queryError } = useQuery({
     queryKey: ['shortlinks'],
     queryFn: getShortlinks,
+    retry: 1,
   });
+
+  // Log errors separately
+  if (queryError) {
+    console.error('[Shortlinks] Error loading shortlinks:', queryError);
+  }
 
   const createMutation = useMutation({
     mutationFn: createShortlink,
@@ -81,6 +88,30 @@ export function Shortlinks() {
     }
   };
 
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-AR', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  // Filtrar shortlinks según búsqueda
+  const shortlinksList = data?.shortlinks || [];
+  const filteredShortlinks = shortlinksList.filter((shortlink: Shortlink) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      shortlink.name.toLowerCase().includes(query) ||
+      shortlink.slug.toLowerCase().includes(query) ||
+      shortlink.url.toLowerCase().includes(query)
+    );
+  });
+
   if (isLoading) {
     return (
       <div style={{ padding: '2rem' }}>
@@ -90,17 +121,29 @@ export function Shortlinks() {
     );
   }
 
-  return (
-    <div style={{ padding: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <div>
-          <h1 style={{ margin: 0, marginBottom: '0.5rem' }}>🔗 Shortlinks</h1>
-          <p style={{ color: '#6c757d', margin: 0 }}>
-            Gestiona los shortlinks de tus comercios. Cada shortlink redirige a WhatsApp con identificación automática.
-          </p>
+  if (queryError) {
+    console.error('[Shortlinks] Query error:', queryError);
+    return (
+      <div style={{ padding: '2rem' }}>
+        <h1>Shortlinks</h1>
+        <div style={{
+          padding: '1rem',
+          backgroundColor: '#f8d7da',
+          color: '#721c24',
+          borderRadius: '4px',
+          marginBottom: '1rem',
+        }}>
+          <strong>Error al cargar shortlinks:</strong>
+          <p>{queryError instanceof Error ? queryError.message : String(queryError)}</p>
+          <details style={{ marginTop: '0.5rem' }}>
+            <summary>Detalles técnicos</summary>
+            <pre style={{ fontSize: '0.85rem', overflow: 'auto' }}>
+              {JSON.stringify(queryError, null, 2)}
+            </pre>
+          </details>
         </div>
         <button
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => window.location.reload()}
           style={{
             padding: '0.75rem 1.5rem',
             backgroundColor: '#007bff',
@@ -108,11 +151,58 @@ export function Shortlinks() {
             border: 'none',
             borderRadius: '4px',
             cursor: 'pointer',
-            fontSize: '1rem',
           }}
         >
-          + Crear Shortlink
+          Recargar Página
         </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: '2rem' }}>
+      <div style={{ marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div>
+            <h1 style={{ margin: 0, marginBottom: '0.5rem' }}>🔗 Shortlinks</h1>
+            <p style={{ color: '#6c757d', margin: 0 }}>
+              Gestiona los shortlinks de tus comercios. Cada shortlink redirige a WhatsApp con identificación automática.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            style={{
+              padding: '0.75rem 1.5rem',
+              backgroundColor: '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: '500',
+            }}
+          >
+            + Crear Shortlink
+          </button>
+        </div>
+        
+        {/* Barra de búsqueda */}
+        <div style={{ marginTop: '1rem' }}>
+          <input
+            type="text"
+            placeholder="🔍 Buscar por nombre, slug o URL..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%',
+              maxWidth: '500px',
+              padding: '0.75rem 1rem',
+              border: '1px solid #dee2e6',
+              borderRadius: '4px',
+              fontSize: '1rem',
+            }}
+          />
+        </div>
       </div>
 
       {error && (
@@ -129,7 +219,34 @@ export function Shortlinks() {
         </div>
       )}
 
-      {data?.shortlinks && data.shortlinks.length === 0 ? (
+      {filteredShortlinks.length === 0 && searchQuery ? (
+        <div
+          style={{
+            padding: '3rem',
+            textAlign: 'center',
+            backgroundColor: '#f8f9fa',
+            borderRadius: '8px',
+            border: '2px dashed #dee2e6',
+          }}
+        >
+          <p style={{ fontSize: '1.2rem', color: '#6c757d', marginBottom: '1rem' }}>
+            No se encontraron shortlinks que coincidan con "{searchQuery}"
+          </p>
+          <button
+            onClick={() => setSearchQuery('')}
+            style={{
+              padding: '0.75rem 1.5rem',
+              backgroundColor: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+            }}
+          >
+            Limpiar búsqueda
+          </button>
+        </div>
+      ) : (shortlinksList.length === 0) ? (
         <div
           style={{
             padding: '3rem',
@@ -158,7 +275,7 @@ export function Shortlinks() {
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '1rem' }}>
-          {data?.shortlinks.map((shortlink) => (
+          {filteredShortlinks.map((shortlink: Shortlink) => (
             <div
               key={shortlink.slug}
               style={{
@@ -171,11 +288,37 @@ export function Shortlinks() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                 <div style={{ flex: 1 }}>
-                  <h3 style={{ margin: 0, marginBottom: '0.5rem' }}>{shortlink.name}</h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                    <h3 style={{ margin: 0 }}>{shortlink.name}</h3>
+                    {shortlink.usage_count !== undefined && (
+                      <span
+                        style={{
+                          padding: '0.25rem 0.75rem',
+                          backgroundColor: '#e7f3ff',
+                          color: '#0066cc',
+                          borderRadius: '12px',
+                          fontSize: '0.875rem',
+                          fontWeight: '500',
+                        }}
+                      >
+                        👆 {shortlink.usage_count} usos
+                      </span>
+                    )}
+                  </div>
                   <p style={{ margin: 0, color: '#6c757d', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
                     Slug: <code style={{ backgroundColor: '#f8f9fa', padding: '0.2rem 0.4rem', borderRadius: '3px' }}>{shortlink.slug}</code>
                   </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem' }}>
+                  <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                    <span style={{ color: '#6c757d', fontSize: '0.85rem' }}>
+                      📅 Creado: {formatDate(shortlink.created_at)}
+                    </span>
+                    {shortlink.updated_at && shortlink.updated_at !== shortlink.created_at && (
+                      <span style={{ color: '#6c757d', fontSize: '0.85rem' }}>
+                        ✏️ Actualizado: {formatDate(shortlink.updated_at)}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
                     <input
                       type="text"
                       value={shortlink.url}

@@ -202,6 +202,9 @@ export interface Shortlink {
   name: string;
   url: string;
   business_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  usage_count?: number;
 }
 
 export interface ShortlinksResponse {
@@ -220,6 +223,9 @@ export interface CreateShortlinkResponse {
   name: string;
   url: string;
   business_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  usage_count?: number;
 }
 
 export const getShortlinks = async (): Promise<ShortlinksResponse> => {
