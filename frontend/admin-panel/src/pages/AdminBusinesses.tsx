@@ -358,7 +358,6 @@ export function AdminBusinesses() {
             setShortlinkUrl(null);
             setShortlinkName(null);
           }}
-          onRefresh={() => loadShortlinkQR(selectedBusiness.id)}
         />
       )}
 
@@ -511,14 +510,12 @@ function QRModal({
   shortlinkUrl,
   shortlinkName,
   onClose,
-  onRefresh,
 }: {
   business: Business;
   qrCode: string | null;
   shortlinkUrl: string | null;
   shortlinkName: string | null;
   onClose: () => void;
-  onRefresh: () => void;
 }) {
   const copyToClipboard = () => {
     if (shortlinkUrl) {

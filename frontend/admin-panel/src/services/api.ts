@@ -170,11 +170,6 @@ export const getBusiness = async (id: string): Promise<BusinessResponse> => {
   return response.data;
 };
 
-export const getBusiness = async (id: string): Promise<BusinessResponse> => {
-  const response = await api.get<BusinessResponse>(`/api/admin/businesses/${id}`);
-  return response.data;
-};
-
 export const createBusiness = async (data: CreateBusinessRequest): Promise<BusinessResponse> => {
   const response = await api.post<BusinessResponse>('/api/admin/businesses', data);
   return response.data;
