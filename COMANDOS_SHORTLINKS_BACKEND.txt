@@ -1,0 +1,21 @@
+# Comandos para subir endpoint de shortlinks al backend
+
+# 1. Verificar cambios
+git status
+
+# 2. Agregar archivos modificados
+git add backend/src/api/routes/shortlinks.js
+git add backend/src/api/server.js
+git add frontend/admin-panel/src/services/api.ts
+
+# 3. Crear commit
+git commit -m "feat: Agregar endpoint /api/shortlinks en backend y corregir autenticación en frontend"
+
+# 4. Crear nueva rama y subir
+git checkout -b fix/endpoint-shortlinks-backend
+git push -u origin fix/endpoint-shortlinks-backend
+
+# 5. Crear Pull Request desde:
+# https://github.com/mendozaxmenos-create/milo-bookings/compare/main...fix/endpoint-shortlinks-backend
+
+

@@ -1,0 +1,24 @@
+# Ejecuta estos comandos en una NUEVA terminal de PowerShell
+# (Abre PowerShell manualmente, no desde Cursor)
+
+cd C:\Users\gusta\Desktop\milo-bookings
+
+# 1. Verificar cambios
+git status
+
+# 2. Agregar archivos
+git add backend/src/api/routes/shortlinks.js
+git add backend/src/api/server.js
+git add frontend/admin-panel/src/services/api.ts
+
+# 3. Crear commit
+git commit -m "feat: Agregar endpoint /api/shortlinks en backend"
+
+# 4. Crear rama y subir
+git checkout -b fix/endpoint-shortlinks-backend
+git push -u origin fix/endpoint-shortlinks-backend
+
+# 5. Después del push, crear PR desde:
+# https://github.com/mendozaxmenos-create/milo-bookings/compare/main...fix/endpoint-shortlinks-backend
+
+
