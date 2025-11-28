@@ -25,11 +25,12 @@ export function Shortlinks() {
     queryKey: ['shortlinks'],
     queryFn: getShortlinks,
     retry: 1,
-    onError: (error: any) => {
-      console.error('[Shortlinks] Error loading shortlinks:', error);
-      console.error('[Shortlinks] Error details:', error.message, error.response);
-    },
   });
+
+  // Log errors separately
+  if (queryError) {
+    console.error('[Shortlinks] Error loading shortlinks:', queryError);
+  }
 
   const createMutation = useMutation({
     mutationFn: createShortlink,
@@ -100,7 +101,8 @@ export function Shortlinks() {
   };
 
   // Filtrar shortlinks según búsqueda
-  const filteredShortlinks = data?.shortlinks.filter(shortlink => {
+  const shortlinksList = data?.shortlinks || [];
+  const filteredShortlinks = shortlinksList.filter((shortlink: Shortlink) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -108,7 +110,7 @@ export function Shortlinks() {
       shortlink.slug.toLowerCase().includes(query) ||
       shortlink.url.toLowerCase().includes(query)
     );
-  }) || [];
+  });
 
   if (isLoading) {
     return (
@@ -244,7 +246,7 @@ export function Shortlinks() {
             Limpiar búsqueda
           </button>
         </div>
-      ) : data?.shortlinks && data.shortlinks.length === 0 ? (
+      ) : (shortlinksList.length === 0) ? (
         <div
           style={{
             padding: '3rem',
@@ -273,7 +275,7 @@ export function Shortlinks() {
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '1rem' }}>
-          {filteredShortlinks.map((shortlink) => (
+          {filteredShortlinks.map((shortlink: Shortlink) => (
             <div
               key={shortlink.slug}
               style={{
