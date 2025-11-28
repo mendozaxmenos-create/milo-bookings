@@ -32,6 +32,9 @@ router.get('/', async (req, res) => {
       name: client.name,
       url: `${process.env.SHORTLINK_BASE_URL || 'https://go.soymilo.com'}/${client.slug}`,
       business_id: client.business_id,
+      created_at: client.created_at,
+      updated_at: client.updated_at,
+      usage_count: 0, // TODO: Implementar tracking de uso
     }));
 
     res.json({ shortlinks });
@@ -96,6 +99,9 @@ router.post('/', async (req, res) => {
       name: client.name,
       url: `${process.env.SHORTLINK_BASE_URL || 'https://go.soymilo.com'}/${client.slug}`,
       business_id: client.business_id,
+      created_at: client.created_at,
+      updated_at: client.updated_at,
+      usage_count: 0,
     });
   } catch (error) {
     console.error('[Shortlinks API] Error creating shortlink:', error);
@@ -145,6 +151,9 @@ router.put('/:slug', async (req, res) => {
       name: updatedClient.name,
       url: `${process.env.SHORTLINK_BASE_URL || 'https://go.soymilo.com'}/${updatedClient.slug}`,
       business_id: updatedClient.business_id,
+      created_at: updatedClient.created_at,
+      updated_at: updatedClient.updated_at,
+      usage_count: 0, // TODO: Implementar tracking de uso
     });
   } catch (error) {
     console.error('[Shortlinks API] Error updating shortlink:', error);
