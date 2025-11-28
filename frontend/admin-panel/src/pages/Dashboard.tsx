@@ -33,9 +33,11 @@ export function Dashboard() {
         return response.data;
       } catch (error) {
         console.error('[Dashboard] Error fetching services:', error);
-        throw error;
+        // Retornar datos vacíos en lugar de lanzar error
+        return { data: [] };
       }
     },
+    retry: false, // No reintentar automáticamente
   });
 
   const { data: bookings, isLoading: bookingsLoading, error: bookingsError } = useQuery<{ data: BookingSummary[] }>({
@@ -52,9 +54,11 @@ export function Dashboard() {
         return response.data;
       } catch (error) {
         console.error('[Dashboard] Error fetching bookings:', error);
-        throw error;
+        // Retornar datos vacíos en lugar de lanzar error
+        return { data: [] };
       }
     },
+    retry: false, // No reintentar automáticamente
   });
 
   const stats = {
@@ -79,21 +83,12 @@ export function Dashboard() {
     return <div style={{ padding: '2rem' }}>Cargando estadísticas...</div>;
   }
 
-  if (servicesError || bookingsError) {
-    return (
-      <div style={{ padding: '2rem' }}>
-        <h1 style={{ marginBottom: '2rem' }}>Dashboard</h1>
-        <div style={{ 
-          padding: '1rem', 
-          backgroundColor: '#f8d7da', 
-          color: '#721c24', 
-          borderRadius: '4px',
-          marginBottom: '1rem'
-        }}>
-          Error al cargar datos: {servicesError?.message || bookingsError?.message}
-        </div>
-      </div>
-    );
+  // Si hay errores, los registramos pero continuamos mostrando el dashboard con valores en 0
+  if (servicesError) {
+    console.warn('[Dashboard] Error loading services, showing 0:', servicesError);
+  }
+  if (bookingsError) {
+    console.warn('[Dashboard] Error loading bookings, showing 0:', bookingsError);
   }
 
   return (

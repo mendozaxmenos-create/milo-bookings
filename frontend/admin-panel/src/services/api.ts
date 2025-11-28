@@ -53,7 +53,13 @@ api.interceptors.request.use((config) => {
             businessId,
             url: config.url,
           });
+        } else {
+          // Asegurarse de que el header no se envíe si no estamos en la ruta de vista
+          delete config.headers['X-Business-Id'];
         }
+      } else {
+        // Si no es super admin, asegurarse de que el header no se envíe
+        delete config.headers['X-Business-Id'];
       }
     } catch {
       // Ignore parse errors from stale storage entries
