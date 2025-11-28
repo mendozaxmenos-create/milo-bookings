@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getBusinesses,
-  getBusinessQR,
   createBusiness,
   deleteBusiness,
   activateBusiness,
@@ -86,34 +85,30 @@ export function AdminBusinesses() {
   });
 
   const [shortlinkUrl, setShortlinkUrl] = useState<string | null>(null);
+  const [shortlinkName, setShortlinkName] = useState<string | null>(null);
 
-  const loadQRCode = async (businessId: string) => {
+  const loadShortlinkQR = async (businessId: string) => {
     try {
-      // Primero intentar obtener el shortlink asociado al negocio
+      // Buscar el shortlink asociado al negocio
       const shortlinksResponse = await getShortlinks();
       const shortlink = shortlinksResponse.shortlinks.find(s => s.business_id === businessId);
       
       if (shortlink) {
-        // Si hay shortlink, usar su URL para el QR
         setShortlinkUrl(shortlink.url);
-        setQrCode(shortlink.url); // Guardamos la URL para generar el QR
-        console.log('[Admin] Shortlink encontrado para negocio:', { businessId, shortlinkUrl: shortlink.url });
+        setShortlinkName(shortlink.name);
+        setQrCode(shortlink.url);
+        console.log('[Admin] Shortlink encontrado:', { businessId, url: shortlink.url, name: shortlink.name });
       } else {
-        // Si no hay shortlink, usar el QR del bot como fallback
-        console.log('[Admin] No hay shortlink para negocio, usando QR del bot:', businessId);
-        const response = await getBusinessQR(businessId);
-        if (response.data.qr) {
-          setQrCode(response.data.qr);
-          setShortlinkUrl(null);
-        } else {
-          setQrCode(null);
-          setShortlinkUrl(null);
-        }
+        setQrCode(null);
+        setShortlinkUrl(null);
+        setShortlinkName(null);
+        console.log('[Admin] No hay shortlink para negocio:', businessId);
       }
     } catch (error) {
-      console.error('Error loading QR:', error);
+      console.error('Error loading shortlink:', error);
       setQrCode(null);
       setShortlinkUrl(null);
+      setShortlinkName(null);
     }
   };
 
@@ -121,7 +116,8 @@ export function AdminBusinesses() {
     setSelectedBusiness(business);
     setShowQRModal(true);
     setShortlinkUrl(null);
-    await loadQRCode(business.id);
+    setShortlinkName(null);
+    await loadShortlinkQR(business.id);
   };
 
 
@@ -354,13 +350,15 @@ export function AdminBusinesses() {
           business={selectedBusiness}
           qrCode={qrCode}
           shortlinkUrl={shortlinkUrl}
+          shortlinkName={shortlinkName}
           onClose={() => {
             setShowQRModal(false);
             setSelectedBusiness(null);
             setQrCode(null);
             setShortlinkUrl(null);
+            setShortlinkName(null);
           }}
-          onRefresh={() => loadQRCode(selectedBusiness.id)}
+          onRefresh={() => loadShortlinkQR(selectedBusiness.id)}
         />
       )}
 
@@ -511,17 +509,24 @@ function QRModal({
   business,
   qrCode,
   shortlinkUrl,
+  shortlinkName,
   onClose,
   onRefresh,
 }: {
   business: Business;
   qrCode: string | null;
   shortlinkUrl: string | null;
+  shortlinkName: string | null;
   onClose: () => void;
   onRefresh: () => void;
 }) {
-  const isShortlinkQR = shortlinkUrl !== null;
-  
+  const copyToClipboard = () => {
+    if (shortlinkUrl) {
+      navigator.clipboard.writeText(shortlinkUrl);
+      alert('URL copiada al portapapeles');
+    }
+  };
+
   return (
     <div
       style={{
@@ -530,84 +535,155 @@ function QRModal({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: 'rgba(0,0,0,0.6)',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1000,
+        padding: '1rem',
       }}
+      onClick={onClose}
     >
       <div
         style={{
           backgroundColor: 'white',
-          padding: '2rem',
-          borderRadius: '8px',
+          padding: '2.5rem',
+          borderRadius: '12px',
           textAlign: 'center',
-          maxWidth: '400px',
+          maxWidth: '450px',
+          width: '100%',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
         }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ marginTop: 0 }}>
-          {isShortlinkQR ? 'QR Code Shortlink' : 'QR Code Bot'} - {business.name}
-        </h2>
-        {qrCode ? (
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem', color: '#212529' }}>
+            📱 QR Code Shortlink
+          </h2>
+          <p style={{ margin: 0, color: '#6c757d', fontSize: '0.95rem' }}>
+            {business.name}
+          </p>
+        </div>
+
+        {qrCode && shortlinkUrl ? (
           <>
-            <div style={{ margin: '1rem 0' }}>
-              <QRCode value={qrCode} size={256} />
+            <div 
+              style={{ 
+                margin: '1.5rem 0',
+                padding: '1rem',
+                backgroundColor: '#f8f9fa',
+                borderRadius: '8px',
+                display: 'inline-block',
+              }}
+            >
+              <QRCode value={qrCode} size={280} level="H" />
             </div>
-            {isShortlinkQR ? (
-              <>
-                <p style={{ color: '#6c757d', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                  Escanea este código para abrir el shortlink
+            
+            {shortlinkName && (
+              <div style={{ marginBottom: '1rem' }}>
+                <p style={{ margin: '0 0 0.25rem 0', color: '#495057', fontSize: '0.9rem', fontWeight: '500' }}>
+                  Shortlink: {shortlinkName}
                 </p>
-                <p style={{ color: '#007bff', fontSize: '0.875rem', fontWeight: 'bold', wordBreak: 'break-all' }}>
-                  {shortlinkUrl}
-                </p>
-              </>
-            ) : (
-              <p style={{ color: '#6c757d', fontSize: '0.875rem' }}>
-                Escanea este código con WhatsApp para conectar el bot
-              </p>
+              </div>
             )}
-          </>
-        ) : (
-          <div>
-            <p>
-              {isShortlinkQR 
-                ? 'No hay shortlink asociado a este negocio.' 
-                : 'El bot ya está conectado o no hay QR disponible.'}
+
+            <div 
+              style={{
+                marginBottom: '1.5rem',
+                padding: '0.75rem',
+                backgroundColor: '#e7f3ff',
+                borderRadius: '6px',
+                border: '1px solid #b3d9ff',
+              }}
+            >
+              <p style={{ margin: '0 0 0.5rem 0', color: '#495057', fontSize: '0.85rem', fontWeight: '500' }}>
+                URL del Shortlink:
+              </p>
+              <p 
+                style={{ 
+                  margin: 0, 
+                  color: '#007bff', 
+                  fontSize: '0.9rem', 
+                  fontWeight: '600',
+                  wordBreak: 'break-all',
+                  cursor: 'pointer',
+                }}
+                onClick={copyToClipboard}
+                title="Click para copiar"
+              >
+                {shortlinkUrl}
+              </p>
+            </div>
+
+            <p style={{ color: '#6c757d', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+              Escanea este código QR para abrir el shortlink y redirigir a WhatsApp
             </p>
-            {!isShortlinkQR && (
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
               <button
-                onClick={onRefresh}
+                onClick={copyToClipboard}
                 style={{
-                  marginTop: '1rem',
-                  padding: '0.5rem 1rem',
+                  padding: '0.75rem 1.5rem',
                   backgroundColor: '#007bff',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '4px',
+                  borderRadius: '6px',
                   cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '500',
+                  transition: 'background-color 0.2s',
                 }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#0056b3'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#007bff'}
               >
-                Refrescar
+                📋 Copiar URL
               </button>
-            )}
+              <button
+                onClick={onClose}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '500',
+                  transition: 'background-color 0.2s',
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#5a6268'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#6c757d'}
+              >
+                Cerrar
+              </button>
+            </div>
+          </>
+        ) : (
+          <div style={{ padding: '2rem 1rem' }}>
+            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🔗</div>
+            <h3 style={{ margin: '0 0 0.75rem 0', color: '#495057', fontSize: '1.1rem' }}>
+              No hay shortlink asociado
+            </h3>
+            <p style={{ color: '#6c757d', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+              Este negocio no tiene un shortlink creado. Ve a la sección de <strong>Shortlinks</strong> para crear uno.
+            </p>
+            <button
+              onClick={onClose}
+              style={{
+                padding: '0.75rem 1.5rem',
+                backgroundColor: '#6c757d',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                fontWeight: '500',
+              }}
+            >
+              Cerrar
+            </button>
           </div>
         )}
-        <button
-          onClick={onClose}
-          style={{
-            marginTop: '1rem',
-            padding: '0.5rem 1rem',
-            backgroundColor: '#6c757d',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          Cerrar
-        </button>
       </div>
     </div>
   );
