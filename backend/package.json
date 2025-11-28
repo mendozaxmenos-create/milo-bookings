@@ -17,7 +17,8 @@
     "fix:phones": "node scripts/fix-customer-phones.js",
     "verify:data": "node scripts/verify-data.js",
     "show:credentials": "node scripts/show-credentials.js",
-    "migrate:businesses-to-clients": "node scripts/migrate-businesses-to-clients.js"
+    "migrate:businesses-to-clients": "node scripts/migrate-businesses-to-clients.js",
+    "migrate:shortlinks-to-businesses": "node scripts/migrate-shortlinks-to-businesses.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

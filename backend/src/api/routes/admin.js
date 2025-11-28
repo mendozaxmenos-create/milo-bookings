@@ -660,5 +660,77 @@ router.put('/config/subscription-price', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/admin/migrate-shortlinks-to-businesses
+ * Migrar shortlinks sin business_id a businesses
+ * Solo para super admin
+ */
+router.post('/migrate-shortlinks-to-businesses', async (req, res) => {
+  try {
+    if (!req.user.is_system_user || req.user.role !== 'super_admin') {
+      return res.status(403).json({ error: 'Forbidden: Only super admin can migrate' });
+    }
+
+    console.log('[Admin] Iniciando migración de shortlinks a businesses...');
+    
+    const db = (await import('../../../database/index.js')).default;
+    const { Business } = await import('../../../database/models/Business.js');
+    const { ClientService } = await import('../../services/clientService.js');
+    
+    // Obtener todos los shortlinks activos sin business_id
+    const clientsWithoutBusiness = await db('clients')
+      .where({ status: 'active' })
+      .whereNull('business_id');
+    
+    console.log(`[Admin] Encontrados ${clientsWithoutBusiness.length} shortlinks sin business_id`);
+    
+    const results = [];
+    
+    for (const client of clientsWithoutBusiness) {
+      try {
+        // Crear business para este shortlink
+        const business = await Business.create({
+          name: client.name,
+          phone: null,
+          email: null,
+          whatsapp_number: null,
+          owner_phone: null,
+          is_active: true,
+          plan_type: 'basic',
+          is_trial: false,
+        });
+        
+        // Actualizar el shortlink con el business_id
+        await ClientService.update(client.id, {
+          business_id: business.id,
+        });
+        
+        results.push({
+          shortlink: client.slug,
+          business_id: business.id,
+          status: 'success',
+        });
+        
+        console.log(`[Admin] ✅ Shortlink ${client.slug} migrado a business ${business.id}`);
+      } catch (error) {
+        console.error(`[Admin] ❌ Error migrando shortlink ${client.slug}:`, error.message);
+        results.push({
+          shortlink: client.slug,
+          status: 'error',
+          error: error.message,
+        });
+      }
+    }
+    
+    res.json({
+      message: `Migración completada: ${results.filter(r => r.status === 'success').length} exitosos, ${results.filter(r => r.status === 'error').length} errores`,
+      results,
+    });
+  } catch (error) {
+    console.error('[Admin] Error en migración:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
 export default router;
 
