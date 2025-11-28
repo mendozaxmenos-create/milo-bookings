@@ -302,22 +302,6 @@ export function AdminBusinesses() {
                   Ver QR
                 </button>
                 <button
-                  onClick={() => handleReconnectBot(business.id)}
-                  disabled={reconnectMutation.isPending}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    backgroundColor: '#ffc107',
-                    color: 'black',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: reconnectMutation.isPending ? 'not-allowed' : 'pointer',
-                    fontSize: '0.875rem',
-                    opacity: reconnectMutation.isPending ? 0.6 : 1,
-                  }}
-                >
-                  {reconnectMutation.isPending ? 'Reconectando...' : 'Reconectar Bot'}
-                </button>
-                <button
                   onClick={() => handleToggleActive(business)}
                   style={{
                     padding: '0.5rem 1rem',
