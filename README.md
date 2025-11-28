@@ -81,19 +81,34 @@
 - **Recordatorios Automáticos** - Configurar horas antes y mensajes
 - **Notificaciones al Dueño** - Múltiples teléfonos y mensajes personalizables
 - **Configuración de Pagos** - Credenciales de MercadoPago
+  - **Cuenta Centralizada** - Pagos van a cuenta de Milo por defecto
+  - **Cuenta Propia** - Opción para configurar cuenta propia de MercadoPago
+  - **Instructivo Completo** - Guía paso a paso para configurar MercadoPago
+  - **Verificación de Credenciales** - Probar conexión antes de guardar
 
 #### 🔗 Gestión de Shortlinks (Super Admin)
 - **Crear Shortlinks** - Generar links cortos personalizados para cada comercio
 - **Gestión Completa** - Crear, editar, eliminar shortlinks desde el panel
+- **Búsqueda y Filtrado** - Buscar shortlinks por nombre, slug o URL
 - **Generación de QR** - Generar código QR automáticamente para cada shortlink
-- **Descarga de QR** - Descargar QR como imagen PNG para compartir
+- **Visualización de QR** - Ver QR desde el panel de negocios con diseño mejorado
+- **Información Detallada** - Fechas de creación/modificación y contador de uso
 - **Multi-tenant** - Cada comercio tiene su shortlink único
 - **Redirección Automática** - Shortlinks redirigen a WhatsApp con identificación del comercio
+- **UI/UX Mejorada** - Interfaz moderna con mejor experiencia de usuario
 
 #### 🔔 Notificaciones
 - **Notificaciones al Dueño** - WhatsApp cuando hay nueva reserva
 - **Recordatorios a Clientes** - Automáticos antes de la cita
 - **Mensajes Personalizables** - Configuración completa de mensajes
+
+#### 👥 Panel de Super Admin
+- **Gestión de Negocios** - Ver, crear, editar, desactivar negocios
+- **Vista de Negocios** - Ver panel de cualquier negocio como super admin
+- **Gestión de Shortlinks** - Crear y administrar shortlinks para todos los negocios
+- **QR de Shortlinks** - Ver QR de shortlinks desde el panel de negocios
+- **Migración de Datos** - Herramientas para migrar shortlinks a negocios
+- **Dashboard Mejorado** - Muestra 0 en lugar de errores cuando no hay datos
 
 #### 💾 Backup Automático (Super Admin)
 - **Backups Diarios** - Automáticos en producción
@@ -557,6 +572,9 @@ El MVP está **100% completo** con todas las funcionalidades críticas implement
 - ✅ **Backup Automático** - Backups diarios y gestión manual
 - ✅ **Sistema de Shortlinks** - Links cortos personalizados para cada comercio (Nov 2025)
 - ✅ **Generación de QR** - QR codes automáticos para compartir shortlinks (Nov 2025)
+- ✅ **UI/UX Mejorada** - Interfaz moderna con mejor experiencia de usuario (Nov 2025)
+- ✅ **Instructivo de Pagos** - Guía completa para configurar MercadoPago (Nov 2025)
+- ✅ **Panel de Super Admin** - Vista completa de negocios y gestión avanzada (Nov 2025)
 
 ### 📝 Próximas Features (Roadmap)
 
@@ -661,9 +679,15 @@ El bot guía al cliente paso a paso:
 ---
 
 **Última actualización:** Noviembre 2025  
-**Versión:** 1.0.0  
+**Versión:** 1.1.0  
 **Estado:** ✅ MVP Completo - Listo para Producción  
-**Nuevas Features:** Sistema de Shortlinks + Generación de QR (Nov 2025)
+**Nuevas Features (Nov 2025):**
+- Sistema de Shortlinks con búsqueda y filtrado
+- Generación de QR mejorada con UI moderna
+- Instructivo completo de configuración de MercadoPago
+- Panel de Super Admin con vista de negocios
+- Dashboard mejorado (muestra 0 en lugar de errores)
+- Mejoras de UI/UX en toda la aplicación
 
 ---
 

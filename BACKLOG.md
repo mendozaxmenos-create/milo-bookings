@@ -1,6 +1,6 @@
 # 📋 Backlog de Milo Bookings
 
-**Última actualización:** 27 de Noviembre 2025
+**Última actualización:** 28 de Noviembre 2025
 
 ---
 
@@ -36,6 +36,13 @@
 - [x] Backup Automático
 - [x] Sistema de Shortlinks (27/11/2025)
 - [x] Generación de QR para Shortlinks (27/11/2025)
+- [x] Mejoras de UI/UX en Shortlinks (28/11/2025)
+- [x] Búsqueda y filtrado de shortlinks (28/11/2025)
+- [x] Fechas y contador de uso en shortlinks (28/11/2025)
+- [x] Instructivo de configuración de MercadoPago (28/11/2025)
+- [x] Panel de Super Admin mejorado (28/11/2025)
+- [x] Vista de negocios desde super admin (28/11/2025)
+- [x] Dashboard mejorado (muestra 0 en lugar de errores) (28/11/2025)
 
 ### Correcciones
 - [x] Rutas API corregidas (prefijo `/api` en todas las rutas)
@@ -62,10 +69,12 @@
 - [ ] Documentar proceso para usuarios finales
 
 ### Mejoras de UI/UX
-- [ ] Mejorar diseño de página de Shortlinks
-- [ ] Agregar búsqueda/filtrado de shortlinks
-- [ ] Agregar fecha de creación/modificación en lista
-- [ ] Agregar contador de uso de cada shortlink
+- [x] Mejorar diseño de página de Shortlinks (28/11/2025)
+- [x] Agregar búsqueda/filtrado de shortlinks (28/11/2025)
+- [x] Agregar fecha de creación/modificación en lista (28/11/2025)
+- [x] Agregar contador de uso de cada shortlink (28/11/2025)
+- [x] Mejorar modal de QR con diseño moderno (28/11/2025)
+- [x] Mejorar mensajes de configuración de pagos (28/11/2025)
 
 ---
 
@@ -172,8 +181,10 @@
 ### Q4 2025 (Nov-Dic)
 - ✅ Sistema de Shortlinks
 - ✅ Generación de QR
-- ⏳ Configuración de dominio
-- ⏳ Mejoras de UI/UX de shortlinks
+- ✅ Mejoras de UI/UX de shortlinks
+- ✅ Instructivo de configuración de MercadoPago
+- ✅ Panel de Super Admin mejorado
+- ⏳ Configuración de dominio personalizado
 
 ### Q1 2026 (Ene-Mar)
 - Analytics de shortlinks
@@ -190,6 +201,6 @@
 ---
 
 **Mantenido por:** Mendoza x Menos Create  
-**Última revisión:** 27 de Noviembre 2025
+**Última revisión:** 28 de Noviembre 2025
 
 
