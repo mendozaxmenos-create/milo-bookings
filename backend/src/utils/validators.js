@@ -1,0 +1,161 @@
+import Joi from 'joi';
+import { sanitizeObject, sanitizeName, sanitizePhone, sanitizeEmail, sanitizeText } from './sanitize.js';
+
+export const validateBusiness = (data, isUpdate = false) => {
+  const schema = Joi.object({
+    name: isUpdate ? Joi.string().min(1).max(255).optional() : Joi.string().min(1).max(255).required(),
+    phone: isUpdate ? Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).optional() : Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).required(),
+    email: Joi.string().email().optional().allow('', null),
+    whatsapp_number: isUpdate ? Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).optional() : Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).required(),
+    owner_phone: isUpdate ? Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).optional() : Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).required(),
+    is_active: Joi.boolean().optional(),
+    is_trial: Joi.boolean().optional(),
+    plan_type: Joi.string().valid('basic', 'premium').optional(),
+  });
+
+  return schema.validate(data);
+};
+
+export const validateService = (data, isUpdate = false) => {
+  // Sanitizar inputs primero
+  const sanitizedData = sanitizeObject(data, {
+    name: 'string',
+    description: 'text',
+  });
+
+  const schema = Joi.object({
+    name: isUpdate ? Joi.string().min(1).max(255).optional() : Joi.string().min(1).max(255).required(),
+    description: Joi.string().max(1000).optional().allow('', null),
+    duration_minutes: isUpdate ? Joi.number().integer().min(1).max(1440).optional() : Joi.number().integer().min(1).max(1440).required(),
+    price: isUpdate ? Joi.number().min(0).precision(2).optional() : Joi.number().min(0).precision(2).required(),
+    display_order: Joi.number().integer().min(0).optional(),
+    is_active: Joi.boolean().optional(),
+    requires_payment: Joi.boolean().optional(),
+    has_multiple_resources: Joi.boolean().optional(),
+    resource_count: Joi.number().integer().min(0).optional().allow(null),
+  });
+
+  return schema.validate(sanitizedData);
+};
+
+export const validateBooking = (data, isUpdate = false) => {
+  // Sanitizar inputs primero
+  const sanitizedData = sanitizeObject(data, {
+    customer_name: 'name',
+    customer_phone: 'phone',
+    notes: 'text',
+    insurance_provider_name: 'string',
+  });
+
+  const schema = Joi.object({
+    service_id: isUpdate ? Joi.string().min(1).optional() : Joi.string().min(1).required(),
+    customer_phone: isUpdate ? Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).optional() : Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).required(),
+    customer_name: Joi.string().max(255).optional().allow('', null),
+    booking_date: isUpdate ? Joi.date().iso().optional() : Joi.date().iso().required(),
+    booking_time: isUpdate ? Joi.string().pattern(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/).optional() : Joi.string().pattern(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/).required(),
+    status: Joi.string().valid('pending', 'pending_payment', 'confirmed', 'cancelled', 'completed').optional(),
+    payment_status: Joi.string().valid('pending', 'paid', 'refunded').optional(),
+    payment_id: Joi.string().optional().allow('', null),
+    amount: isUpdate ? Joi.number().min(0).precision(2).optional() : Joi.number().min(0).precision(2).required(),
+    notes: Joi.string().max(1000).optional().allow('', null),
+    insurance_provider_id: Joi.string().optional().allow('', null),
+    copay_amount: Joi.number().min(0).precision(2).optional().allow(null),
+    insurance_provider_name: Joi.string().max(255).optional().allow('', null),
+  });
+
+  return schema.validate(sanitizedData);
+};
+
+export const validateLogin = (data) => {
+  // Sanitizar inputs primero
+  const sanitizedData = sanitizeObject(data, {
+    email: 'email',
+    phone: 'phone',
+    business_id: 'string',
+  });
+
+  // Para super admin: email + password
+  // Para business user: business_id + phone + password
+  const schema = Joi.object({
+    email: Joi.string().email().optional(),
+    business_id: Joi.string().when('email', {
+      is: Joi.exist(),
+      then: Joi.optional(),
+      otherwise: Joi.required(),
+    }),
+    phone: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).when('email', {
+      is: Joi.exist(),
+      then: Joi.optional(),
+      otherwise: Joi.required(),
+    }),
+    password: Joi.string().min(6).required(),
+  }).or('email', 'business_id');
+
+  return schema.validate(sanitizedData);
+};
+
+export const validateRegister = (data) => {
+  // Sanitizar inputs primero
+  const sanitizedData = sanitizeObject(data, {
+    business_id: 'string',
+    phone: 'phone',
+  });
+
+  const schema = Joi.object({
+    business_id: Joi.string().required(),
+    phone: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).required(),
+    password: Joi.string().min(6).required(),
+    role: Joi.string().valid('owner', 'admin', 'staff').optional(),
+  });
+
+  return schema.validate(sanitizedData);
+};
+
+export const validatePaymentConfig = (data) => {
+  const schema = Joi.object({
+    accessToken: Joi.string().min(10).required(),
+    publicKey: Joi.string().min(10).required(),
+    refreshToken: Joi.string().optional().allow('', null),
+    userId: Joi.string().optional().allow('', null),
+    isActive: Joi.boolean().optional(),
+  });
+
+  return schema.validate(data);
+};
+
+export const validatePasswordResetRequest = (data) => {
+  // Sanitizar inputs primero
+  const sanitizedData = sanitizeObject(data, {
+    email: 'email',
+    phone: 'phone',
+    business_id: 'string',
+  });
+
+  // Para business users: business_id + phone
+  // Para system users (super admin): email
+  const schema = Joi.object({
+    email: Joi.string().email().optional(),
+    business_id: Joi.string().when('email', {
+      is: Joi.exist(),
+      then: Joi.optional(),
+      otherwise: Joi.required(),
+    }),
+    phone: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).when('email', {
+      is: Joi.exist(),
+      then: Joi.optional(),
+      otherwise: Joi.required(),
+    }),
+  }).or('email', 'business_id');
+
+  return schema.validate(sanitizedData);
+};
+
+export const validatePasswordReset = (data) => {
+  const schema = Joi.object({
+    token: Joi.string().length(64).required(), // Token de 64 caracteres (32 bytes en hex)
+    password: Joi.string().min(6).required(),
+  });
+
+  return schema.validate(data);
+};
+

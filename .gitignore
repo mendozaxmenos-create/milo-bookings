@@ -1,0 +1,67 @@
+# Dependencies
+node_modules/
+# Keep root package-lock.json for monorepo
+**/package-lock.json
+!package-lock.json
+yarn.lock
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Database
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# WhatsApp Sessions
+.whatsapp/
+whatsapp-sessions/
+backend/data/whatsapp-sessions/
+**/whatsapp-sessions/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build
+dist/
+build/
+.next/
+out/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary
+tmp/
+temp/
+
+# Credentials - NO SUBIR A GITHUB
+CREDENTIALES_IMPORTANTES.md
+CREDENTIALS*.md
+*_CREDENTIALS.md
+
+# Temporary scripts and documentation
+*.bat
+*.ps1
+COMANDOS*.txt
+EJECUTAR*.txt
+VERIFICAR*.txt
+*_BACKUP.md
+*_TEMP.md
+

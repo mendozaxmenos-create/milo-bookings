@@ -1,0 +1,1368 @@
+import { Business } from '../../../database/models/Business.js';
+import { BusinessSettings } from '../../../database/models/BusinessSettings.js';
+import { Service } from '../../../database/models/Service.js';
+import { Booking } from '../../../database/models/Booking.js';
+import { InsuranceProvider } from '../../../database/models/InsuranceProvider.js';
+import { AvailabilityService } from '../../services/availabilityService.js';
+import { PaymentConfigService } from '../../services/paymentConfigService.js';
+import { PaymentService } from '../../services/paymentService.js';
+
+export class MessageHandler {
+  constructor(bot, businessId) {
+    this.bot = bot;
+    this.businessId = businessId;
+    this.business = null;
+    this.settings = null;
+    this.userState = new Map(); // Para manejar estados de conversación
+  }
+
+  async initialize() {
+    await this.reloadSettings();
+  }
+
+  /**
+   * Convierte un número a su representación con emojis
+   * @param {number} num - Número a convertir
+   * @returns {string} - String con emojis de números
+   */
+  numberToEmoji(num) {
+    const emojiMap = {
+      '0': '0️⃣',
+      '1': '1️⃣',
+      '2': '2️⃣',
+      '3': '3️⃣',
+      '4': '4️⃣',
+      '5': '5️⃣',
+      '6': '6️⃣',
+      '7': '7️⃣',
+      '8': '8️⃣',
+      '9': '9️⃣'
+    };
+    
+    return num.toString().split('').map(digit => emojiMap[digit]).join('');
+  }
+
+  formatPrice(value) {
+    const parsed =
+      typeof value === 'number'
+        ? value
+        : parseFloat(typeof value === 'string' ? value : '0');
+    if (Number.isNaN(parsed)) {
+      return '0.00';
+    }
+    return parsed.toFixed(2);
+  }
+
+  // Recargar configuración desde la base de datos
+  async reloadSettings() {
+    this.business = await Business.findById(this.businessId);
+    this.settings = await BusinessSettings.findByBusiness(this.businessId);
+  }
+
+  /**
+   * Obtiene el número de teléfono real del contacto desde un mensaje de WhatsApp
+   * @param {Message} msg - Mensaje de whatsapp-web.js
+   * @returns {Promise<string>} - Número de teléfono en formato +XXXXXXXXXX
+   */
+  async getCustomerPhone(msg) {
+    try {
+      const fromId = msg.from.split('@')[0];
+      
+      // Intentar obtener el contacto
+      let contact = null;
+      try {
+        contact = await msg.getContact();
+      } catch (err) {
+        console.warn(`[MessageHandler] No se pudo obtener contacto para ${fromId}:`, err.message);
+      }
+      
+      // Si el contacto tiene un número válido y no es el mismo ID, usarlo
+      if (contact && contact.number && contact.number !== fromId) {
+        let phone = contact.number;
+        
+        // Remover espacios y caracteres especiales
+        phone = phone.replace(/[\s\-\(\)]/g, '');
+        
+        // Verificar que sea un número válido (solo dígitos después de +)
+        if (phone.match(/^\+?\d+$/)) {
+          // Si no empieza con +, agregarlo
+          if (!phone.startsWith('+')) {
+            // Si empieza con 0, removerlo (código local)
+            if (phone.startsWith('0')) {
+              phone = phone.substring(1);
+            }
+            // Agregar código de país por defecto (Argentina: 54)
+            // Si el número tiene 10 dígitos o menos, probablemente es local
+            if (!phone.startsWith('54') && phone.length <= 10) {
+              phone = `54${phone}`;
+            }
+            phone = `+${phone}`;
+          }
+          
+          // Validar que el número tenga formato correcto (al menos 10 dígitos)
+          if (phone.replace('+', '').length >= 10) {
+            console.log(`[MessageHandler] Número obtenido del contacto: ${phone} (desde ${fromId})`);
+            return phone;
+          }
+        }
+      }
+      
+      // Si el ID parece un número de teléfono válido (empieza con código de país conocido)
+      // Para Argentina, los números suelen empezar con 54
+      if (fromId.startsWith('54') && fromId.length >= 10 && fromId.length <= 13) {
+        console.log(`[MessageHandler] Usando ID como número (formato válido): +${fromId}`);
+        return `+${fromId}`;
+      }
+      
+      // Intentar obtener el número usando el cliente de WhatsApp
+      try {
+        // getNumberId puede convertir un ID a número, pero a veces no funciona
+        // Intentar obtener información del contacto desde el cliente
+        const chats = await this.bot.client.getChats();
+        const chat = chats.find(c => c.id._serialized === msg.from);
+        
+        if (chat && chat.id && chat.id.user) {
+          const userId = chat.id.user;
+          // Si el user es diferente del fromId y parece un número válido
+          if (userId !== fromId && userId.match(/^\d+$/) && userId.length >= 10) {
+            // Verificar si empieza con código de país
+            if (userId.startsWith('54') || userId.length === 10) {
+              const phone = userId.startsWith('54') ? `+${userId}` : `+54${userId}`;
+              console.log(`[MessageHandler] Número obtenido del chat: ${phone} (desde ID ${fromId})`);
+              return phone;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(`[MessageHandler] No se pudo obtener número desde chat para ${fromId}:`, err.message);
+      }
+      
+      // Si el fromId tiene formato de número argentino (10 dígitos sin código de país)
+      // o número con código de país (12-13 dígitos)
+      if (fromId.match(/^\d+$/) && (fromId.length === 10 || (fromId.length >= 12 && fromId.length <= 13))) {
+        if (fromId.length === 10) {
+          // Número local, agregar código de país
+          console.log(`[MessageHandler] Formateando número local: +54${fromId}`);
+          return `+54${fromId}`;
+        } else if (fromId.startsWith('54')) {
+          // Ya tiene código de país
+          console.log(`[MessageHandler] Usando ID con código de país: +${fromId}`);
+          return `+${fromId}`;
+        }
+      }
+      
+      // Último fallback: devolver el ID con + (aunque puede no ser el número real)
+      console.warn(`[MessageHandler] Usando ID como fallback (puede no ser número real): +${fromId}`);
+      return `+${fromId}`;
+    } catch (error) {
+      console.error('[MessageHandler] Error obteniendo número de teléfono:', error);
+      // Fallback final
+      const fromId = msg.from.split('@')[0];
+      return `+${fromId}`;
+    }
+  }
+
+  async handleMessage(msg) {
+    try {
+      console.log(`[MessageHandler ${this.businessId}] ==========================================`);
+      console.log(`[MessageHandler ${this.businessId}] Processing message...`);
+      
+      // Ignorar mensajes de grupos y estados
+      if (msg.from.includes('@g.us')) {
+        console.log(`[MessageHandler ${this.businessId}] Ignoring group message from ${msg.from}`);
+        return;
+      }
+      
+      if (msg.isStatus) {
+        console.log(`[MessageHandler ${this.businessId}] Ignoring status update`);
+        return;
+      }
+
+      // Ignorar mensajes propios
+      if (msg.fromMe) {
+        console.log(`[MessageHandler ${this.businessId}] Ignoring own message`);
+        return;
+      }
+
+      const from = msg.from;
+      const body = msg.body?.toLowerCase().trim() || '';
+      const userId = from.split('@')[0];
+
+      console.log(`[MessageHandler ${this.businessId}] Message from ${userId}: "${body}"`);
+      console.log(`[MessageHandler ${this.businessId}] Full from: ${from}`);
+
+      // Verificar que tenemos settings cargados
+      if (!this.settings) {
+        console.log(`[MessageHandler ${this.businessId}] Settings not loaded, reloading...`);
+        await this.reloadSettings();
+      }
+
+      // Obtener estado del usuario
+      const userState = this.userState.get(userId) || { step: 'menu' };
+      console.log(`[MessageHandler ${this.businessId}] User state:`, userState);
+
+      // Comandos rápidos
+      if (body === 'menu' || body === 'inicio' || body === 'start') {
+        console.log(`[MessageHandler ${this.businessId}] Quick command detected: menu/inicio/start`);
+        await this.showMainMenu(msg);
+        this.userState.set(userId, { step: 'menu' });
+        console.log(`[MessageHandler ${this.businessId}] Main menu sent`);
+        return;
+      }
+
+      // Navegación según estado
+      console.log(`[MessageHandler ${this.businessId}] Handling state: ${userState.step}`);
+      switch (userState.step) {
+        case 'menu':
+          await this.handleMenuSelection(msg, body, userId);
+          break;
+        case 'viewing_services':
+          await this.handleMenuSelection(msg, body, userId);
+          break;
+        case 'booking_service':
+          await this.handleServiceSelection(msg, body, userId);
+          break;
+        case 'booking_date':
+        case 'booking_date_from_availability':
+          await this.handleDateSelection(msg, body, userId);
+          break;
+        case 'booking_time':
+          await this.handleTimeSelection(msg, body, userId);
+          break;
+        case 'booking_name':
+          await this.handleNameInput(msg, body, userId);
+          break;
+        case 'booking_insurance':
+          await this.handleInsuranceSelection(msg, body, userId);
+          break;
+        case 'booking_confirm':
+          await this.handleBookingConfirmation(msg, body, userId);
+          break;
+        default:
+          console.log(`[MessageHandler ${this.businessId}] Unknown state, showing main menu`);
+          await this.showMainMenu(msg);
+      }
+      console.log(`[MessageHandler ${this.businessId}] Message processing complete`);
+      console.log(`[MessageHandler ${this.businessId}] ==========================================`);
+    } catch (error) {
+      console.error(`[MessageHandler ${this.businessId}] ❌ Error handling message:`, error);
+      console.error(`[MessageHandler ${this.businessId}] Error message:`, error.message);
+      console.error(`[MessageHandler ${this.businessId}] Error stack:`, error.stack);
+      try {
+        await msg.reply('⚠️ Lo siento, ocurrió un error. Por favor intenta de nuevo o escribe "menu" para comenzar.');
+      } catch (replyError) {
+        console.error(`[MessageHandler ${this.businessId}] ❌ Error sending error reply:`, replyError);
+      }
+    }
+  }
+
+  async showMainMenu(msg) {
+    try {
+      console.log(`[MessageHandler ${this.businessId}] 📋 showMainMenu called`);
+      console.log(`[MessageHandler ${this.businessId}] Message from: ${msg.from}`);
+      
+      // Recargar settings para obtener los más recientes
+      console.log(`[MessageHandler ${this.businessId}] Reloading settings...`);
+      await this.reloadSettings();
+      console.log(`[MessageHandler ${this.businessId}] Settings reloaded`);
+      console.log(`[MessageHandler ${this.businessId}] Business:`, this.business?.name || 'not loaded');
+      console.log(`[MessageHandler ${this.businessId}] Settings:`, !!this.settings);
+      
+      const welcomeMessage = this.settings?.welcome_message || 
+        `¡Hola! Bienvenido a ${this.business?.name || 'nuestro negocio'}. ¿En qué puedo ayudarte?`;
+
+      const menu = `
+${welcomeMessage}
+
+*Menú Principal:*
+1️⃣ *Servicios* - Ver servicios disponibles
+2️⃣ *Disponibilidad* - Consultar horarios disponibles
+3️⃣ *Reservar* - Hacer una reserva
+4️⃣ *Mis Reservas* - Ver mis reservas
+
+Escribe el número o el nombre de la opción que deseas.
+      `.trim();
+
+      console.log(`[MessageHandler ${this.businessId}] Sending menu message...`);
+      console.log(`[MessageHandler ${this.businessId}] Menu length: ${menu.length} characters`);
+      console.log(`[MessageHandler ${this.businessId}] Replying to: ${msg.from}`);
+      console.log(`[MessageHandler ${this.businessId}] Message object type:`, typeof msg);
+      console.log(`[MessageHandler ${this.businessId}] Message has reply method:`, typeof msg.reply === 'function');
+      
+      try {
+        const response = await msg.reply(menu);
+        console.log(`[MessageHandler ${this.businessId}] ✅ Menu message sent successfully!`);
+        console.log(`[MessageHandler ${this.businessId}] Response ID: ${response?.id?.id || 'N/A'}`);
+        console.log(`[MessageHandler ${this.businessId}] Response object:`, {
+          hasId: !!response?.id,
+          idValue: response?.id?.id || response?.id,
+          timestamp: response?.timestamp || 'N/A',
+        });
+        return response;
+      } catch (replyError) {
+        console.error(`[MessageHandler ${this.businessId}] ❌ ERROR sending menu message:`, replyError);
+        console.error(`[MessageHandler ${this.businessId}] Error name:`, replyError?.name);
+        console.error(`[MessageHandler ${this.businessId}] Error message:`, replyError?.message);
+        console.error(`[MessageHandler ${this.businessId}] Error stack:`, replyError?.stack);
+        throw replyError; // Re-throw para que se maneje en el catch del handleMessage
+      }
+    } catch (error) {
+      console.error(`[MessageHandler ${this.businessId}] ❌ Error in showMainMenu:`, error);
+      console.error(`[MessageHandler ${this.businessId}] Error message:`, error.message);
+      console.error(`[MessageHandler ${this.businessId}] Error stack:`, error.stack);
+      throw error;
+    }
+  }
+
+  async handleMenuSelection(msg, body, userId) {
+    console.log(`[MessageHandler ${this.businessId}] 🎯 handleMenuSelection called`);
+    console.log(`[MessageHandler ${this.businessId}] Body: "${body}"`);
+    console.log(`[MessageHandler ${this.businessId}] User ID: ${userId}`);
+    
+    const userState = this.userState.get(userId) || { step: 'menu' };
+    console.log(`[MessageHandler ${this.businessId}] Current user state:`, userState);
+    
+    // Si está viendo servicios y escribe un número, iniciar reserva con ese servicio
+    if (userState.step === 'viewing_services') {
+      console.log(`[MessageHandler ${this.businessId}] User is viewing services, checking for service number...`);
+      const numberMatch = body.match(/^(\d+)$/);
+      if (numberMatch) {
+        console.log(`[MessageHandler ${this.businessId}] Service number detected: ${numberMatch[1]}`);
+        // Iniciar flujo de reserva con selección de servicio
+        await this.handleServiceSelection(msg, body, userId);
+        return;
+      }
+    }
+    
+    console.log(`[MessageHandler ${this.businessId}] Checking menu options...`);
+    if (body.includes('servicio') || body === '1' || body === '1️⃣') {
+      console.log(`[MessageHandler ${this.businessId}] Option selected: Servicios`);
+      await this.showServices(msg);
+      this.userState.set(userId, { step: 'viewing_services' });
+    } else if (body.includes('disponibilidad') || body === '2' || body === '2️⃣') {
+      console.log(`[MessageHandler ${this.businessId}] Option selected: Disponibilidad`);
+      await this.showAvailability(msg);
+      this.userState.set(userId, { step: 'menu' });
+    } else if (body.includes('reservar') || body === '3' || body === '3️⃣') {
+      console.log(`[MessageHandler ${this.businessId}] Option selected: Reservar`);
+      await this.startBookingFlow(msg, userId);
+    } else if (body.includes('reserva') || body === '4' || body === '4️⃣') {
+      console.log(`[MessageHandler ${this.businessId}] Option selected: Mis Reservas`);
+      await this.showUserBookings(msg);
+      this.userState.set(userId, { step: 'menu' });
+    } else {
+      console.log(`[MessageHandler ${this.businessId}] No menu option matched, showing main menu`);
+      await this.showMainMenu(msg);
+    }
+    console.log(`[MessageHandler ${this.businessId}] ✅ handleMenuSelection complete`);
+  }
+
+  async showServices(msg) {
+    try {
+      const services = await Service.findByBusiness(this.businessId);
+      
+      if (services.length === 0) {
+        await msg.reply('❌ No hay servicios disponibles en este momento.');
+        return;
+      }
+
+      let message = '📋 *Servicios Disponibles:*\n\n';
+      services.forEach((service, index) => {
+        const numberEmoji = this.numberToEmoji(index + 1);
+        message += `${numberEmoji} *${service.name}*\n`;
+        if (service.description) {
+          message += `   ${service.description}\n`;
+        }
+        message += `   ⏱️ ${service.duration_minutes} min | 💰 $${this.formatPrice(service.price)}\n\n`;
+      });
+
+      message += '💡 *Opciones:*\n';
+      message += '• Escribe el *número* del servicio para *reservar* (ej: 1, 2, 3)\n';
+      message += '• Escribe *"menu"* para volver al menú principal';
+      
+      await msg.reply(message);
+    } catch (error) {
+      console.error('Error showing services:', error);
+      await msg.reply('Error al obtener servicios. Por favor intenta más tarde.');
+    }
+  }
+
+  async startBookingFlow(msg, userId) {
+    try {
+      const services = await Service.findByBusiness(this.businessId);
+      
+      if (services.length === 0) {
+        await msg.reply('❌ No hay servicios disponibles para reservar en este momento.');
+        this.userState.set(userId, { step: 'menu' });
+        return;
+      }
+
+      let message = '📋 *Selecciona un servicio:*\n\n';
+      services.forEach((service, index) => {
+        const numberEmoji = this.numberToEmoji(index + 1);
+        message += `${numberEmoji} *${service.name}*\n`;
+        if (service.description) {
+          message += `   ${service.description}\n`;
+        }
+        message += `   ⏱️ ${service.duration_minutes} min | 💰 $${this.formatPrice(service.price)}\n\n`;
+      });
+
+      message += '💡 *Opciones:*\n';
+      message += '• Escribe el *número* del servicio (ej: 1, 2, 3)\n';
+      message += '• Escribe *"menu"* para volver al inicio';
+      
+      await msg.reply(message);
+      this.userState.set(userId, { step: 'booking_service' });
+    } catch (error) {
+      console.error('Error starting booking flow:', error);
+      await msg.reply('Error al iniciar la reserva. Por favor intenta más tarde.');
+    }
+  }
+
+  async handleServiceSelection(msg, body, userId) {
+    try {
+      // Manejar comandos de navegación
+      if (body === 'menu' || body === 'inicio' || body === 'cancelar') {
+        await this.showMainMenu(msg);
+        this.userState.set(userId, { step: 'menu' });
+        return;
+      }
+
+      const services = await Service.findByBusiness(this.businessId);
+      const serviceIndex = parseInt(body) - 1;
+      
+      if (isNaN(serviceIndex) || serviceIndex < 0 || serviceIndex >= services.length) {
+        await msg.reply(
+          `❌ Número inválido. Por favor selecciona un número entre 1 y ${services.length}.\n\n` +
+          `💡 Escribe *"menu"* para volver al inicio`
+        );
+        return;
+      }
+
+      const selectedService = services[serviceIndex];
+      
+      // Mostrar disponibilidad de los próximos días para este servicio
+      await msg.reply('Consultando disponibilidad... ⏳');
+      
+      const availability = {};
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const daysToShow = 7; // Mostrar próximos 7 días
+
+      for (let i = 0; i < daysToShow; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        date.setHours(0, 0, 0, 0);
+        // Generar dateStr usando fecha local, no UTC
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+
+        // Obtener horarios disponibles para este día y servicio (incluyendo serviceId para recursos múltiples)
+        const times = await AvailabilityService.getAvailableTimes(
+          this.businessId,
+          dateStr,
+          selectedService.duration_minutes,
+          selectedService.id // Pasar serviceId para verificar recursos múltiples
+        );
+        if (times.length > 0) {
+          availability[dateStr] = times;
+        }
+      }
+
+      if (Object.keys(availability).length === 0) {
+        await msg.reply(
+          `❌ No hay horarios disponibles para *${selectedService.name}* en los próximos ${daysToShow} días.\n\n` +
+          `💡 Escribe *"menu"* para volver al inicio`
+        );
+        return;
+      }
+
+      // Guardar servicio seleccionado y disponibilidad
+      this.userState.set(userId, {
+        step: 'booking_date_from_availability',
+        selectedService: selectedService,
+        availability: availability, // Guardar disponibilidad para mostrar días
+      });
+
+      // Formatear mensaje con disponibilidad
+      let message = `✅ Servicio seleccionado: *${selectedService.name}*\n`;
+      message += `💰 Precio: $${this.formatPrice(selectedService.price)}\n`;
+      message += `⏱️ Duración: ${selectedService.duration_minutes} minutos\n\n`;
+      message += `📅 *Disponibilidad de los próximos días:*\n\n`;
+
+      const entries = Object.entries(availability).slice(0, daysToShow);
+      entries.forEach(([date, times]) => {
+        const dateObj = new Date(date);
+        const dayName = dateObj.toLocaleDateString('es-ES', { weekday: 'short' });
+        const day = dateObj.getDate();
+        const month = dateObj.toLocaleDateString('es-ES', { month: 'short' });
+        
+        message += `📅 *${dayName} ${day} ${month}*\n`;
+        
+        // Mostrar primeros 6 horarios
+        const timesToShow = times.slice(0, 6);
+        message += `   ${timesToShow.join(' | ')}`;
+        if (times.length > 6) {
+          message += ` ... (+${times.length - 6} más)`;
+        }
+        message += `\n\n`;
+      });
+
+      message += `💡 *Opciones:*\n`;
+      message += `• Escribe la *fecha* para ver todos los horarios y reservar (ej: ${entries[0] ? new Date(entries[0][0]).toLocaleDateString('es-ES', { day: 'numeric', month: 'numeric' }) : '25/12'})\n`;
+      message += `• O escribe "mañana" para el día siguiente\n`;
+      message += `• Escribe *"volver"* para elegir otro servicio\n`;
+      message += `• Escribe *"menu"* para volver al inicio`;
+
+      await msg.reply(message);
+    } catch (error) {
+      console.error('Error handling service selection:', error);
+      await msg.reply('Error al procesar la selección. Por favor intenta de nuevo.');
+    }
+  }
+
+  async handleDateSelection(msg, body, userId) {
+    try {
+      const userState = this.userState.get(userId);
+      const isFromAvailability = userState.step === 'booking_date_from_availability';
+
+      // Manejar comandos de navegación
+      if (body === 'volver' || body === 'atras' || body === 'anterior') {
+        if (isFromAvailability) {
+          // Volver a mostrar servicios
+          await this.showServices(msg);
+          this.userState.set(userId, { step: 'viewing_services' });
+        } else {
+          await this.startBookingFlow(msg, userId);
+        }
+        return;
+      }
+
+      if (body === 'menu' || body === 'inicio' || body === 'cancelar') {
+        await this.showMainMenu(msg);
+        this.userState.set(userId, { step: 'menu' });
+        return;
+      }
+
+      let bookingDate = null;
+      let dateObj = null;
+
+      // Manejar palabras especiales
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (body.includes('mañana') || body.includes('manana')) {
+        dateObj = new Date(today);
+        dateObj.setDate(today.getDate() + 1);
+        dateObj.setHours(0, 0, 0, 0);
+        // Generar bookingDate usando fecha local, no UTC
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        bookingDate = `${year}-${month}-${day}`;
+      } else if (body.includes('hoy')) {
+        dateObj = new Date(today);
+        dateObj.setHours(0, 0, 0, 0);
+        // Generar bookingDate usando fecha local, no UTC
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        bookingDate = `${year}-${month}-${day}`;
+      } else {
+        // Parsear fecha (formato DD/MM/YYYY o DD/MM)
+        const dateMatch = body.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?/);
+        if (!dateMatch) {
+          await msg.reply(
+            `❌ Formato de fecha inválido.\n\n` +
+            `💡 *Opciones:*\n` +
+            `• Escribe la fecha en formato DD/MM/YYYY (ej: 25/12/2024)\n` +
+            `• O DD/MM para el año actual (ej: 25/12)\n` +
+            `• O escribe "mañana" para el día siguiente\n` +
+            `• Escribe *"volver"* para elegir otro servicio\n` +
+            `• Escribe *"menu"* para volver al inicio`
+          );
+          return;
+        }
+
+        const [, day, month, year] = dateMatch;
+        const currentYear = today.getFullYear();
+        const selectedYear = year ? parseInt(year) : currentYear;
+        
+        bookingDate = `${selectedYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        dateObj = new Date(bookingDate);
+      }
+
+      if (!dateObj || isNaN(dateObj.getTime())) {
+        await msg.reply('❌ Fecha inválida. Por favor intenta con otro formato.');
+        return;
+      }
+
+      dateObj.setHours(0, 0, 0, 0);
+      if (dateObj < today) {
+        await msg.reply('❌ Por favor selecciona una fecha en el futuro. No se pueden hacer reservas para fechas pasadas.');
+        return;
+      }
+
+      // bookingDate ya debería estar definido en todos los casos
+      if (!bookingDate) {
+        // Fallback: usar fecha local si por alguna razón no se definió
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        bookingDate = `${year}-${month}-${day}`;
+      }
+
+      // userState ya está declarado arriba, reutilizamos
+      const { selectedService } = userState;
+
+      // Obtener horarios disponibles para esta fecha
+      const availableTimes = await AvailabilityService.getAvailableTimes(
+        this.businessId,
+        bookingDate,
+        selectedService.duration_minutes,
+        selectedService.id // Pasar serviceId para verificar recursos múltiples
+      );
+
+      if (availableTimes.length === 0) {
+        const formattedDate = dateObj.toLocaleDateString('es-ES', {
+          day: 'numeric',
+          month: 'numeric',
+          year: 'numeric'
+        });
+        await msg.reply(
+          `❌ Lo siento, no hay horarios disponibles para el ${formattedDate}.\n\n` +
+          `💡 *Opciones:*\n` +
+          `• Escribe otra fecha (ej: mañana, 25/12)\n` +
+          `• Escribe *"volver"* para elegir otro servicio\n` +
+          `• Escribe *"menu"* para volver al inicio`
+        );
+        return;
+      }
+
+      // Guardar horarios disponibles en el estado para selección por número
+      this.userState.set(userId, {
+        ...userState,
+        step: 'booking_time',
+        bookingDate: bookingDate,
+        availableTimes: availableTimes, // Guardar para selección por número
+      });
+
+      // Formatear fecha para mostrar - usar bookingDate parseado, no dateObj
+      const [year, month, day] = bookingDate.split('-').map(Number);
+      const dateObjForDisplay = new Date(year, month - 1, day);
+      const formattedDate = dateObjForDisplay.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+
+      // Formatear horarios disponibles con números para selección
+      let timeMessage = `📅 *Fecha seleccionada: ${formattedDate}*\n\n`;
+      timeMessage += `*Selecciona un horario disponible:*\n\n`;
+      
+      // Mostrar horarios numerados (máximo 12 para no saturar)
+      const timesToShow = availableTimes.slice(0, 12);
+      timesToShow.forEach((time, index) => {
+        const numberEmoji = this.numberToEmoji(index + 1);
+        timeMessage += `${numberEmoji} ${time}\n`;
+      });
+      
+      if (availableTimes.length > 12) {
+        timeMessage += `\n... y ${availableTimes.length - 12} horarios más\n`;
+      }
+      
+      timeMessage += `\n💡 *Opciones:*\n`;
+      timeMessage += `• Escribe el *número* del horario (ej: 1, 2, 3)\n`;
+      timeMessage += `• O escribe la *hora* directamente (ej: 14:30)\n`;
+      timeMessage += `• Escribe *"volver"* para elegir otra fecha\n`;
+      timeMessage += `• Escribe *"menu"* para volver al inicio`;
+
+      await msg.reply(timeMessage);
+    } catch (error) {
+      console.error('Error handling date selection:', error);
+      await msg.reply('Error al procesar la fecha. Por favor intenta de nuevo.');
+    }
+  }
+
+  async handleTimeSelection(msg, body, userId) {
+    try {
+      const userState = this.userState.get(userId);
+      const { selectedService, bookingDate, availableTimes } = userState;
+
+      // Manejar comandos de navegación
+      if (body === 'volver' || body === 'atras' || body === 'anterior') {
+        this.userState.set(userId, {
+          ...userState,
+          step: 'booking_date',
+          availableTimes: undefined,
+        });
+        await msg.reply('Por favor escribe la fecha deseada en formato DD/MM/YYYY\nEjemplo: 25/12/2024');
+        return;
+      }
+
+      if (body === 'menu' || body === 'inicio' || body === 'cancelar') {
+        await this.showMainMenu(msg);
+        this.userState.set(userId, { step: 'menu' });
+        return;
+      }
+
+      let bookingTime = null;
+
+      // Intentar selección por número primero
+      const numberMatch = body.match(/^(\d+)$/);
+      if (numberMatch && availableTimes && availableTimes.length > 0) {
+        const selectedIndex = parseInt(numberMatch[1]) - 1;
+        if (selectedIndex >= 0 && selectedIndex < availableTimes.length) {
+          bookingTime = availableTimes[selectedIndex];
+        } else {
+          await msg.reply(
+            `❌ Número inválido. Por favor selecciona un número entre 1 y ${availableTimes.length}.\n\n` +
+            `O escribe la hora directamente (ej: 14:30)`
+          );
+          return;
+        }
+      } else {
+        // Intentar parsear como hora (HH:MM)
+        const timeMatch = body.match(/(\d{1,2}):(\d{2})/);
+        if (!timeMatch) {
+          await msg.reply(
+            `❌ Formato inválido. Por favor:\n` +
+            `• Escribe el *número* del horario (ej: 1, 2, 3)\n` +
+            `• O escribe la *hora* en formato HH:MM (ej: 14:30)\n` +
+            `• Escribe *"volver"* para elegir otra fecha`
+          );
+          return;
+        }
+
+        const [, hours, minutes] = timeMatch;
+        bookingTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+      }
+
+      // Validar que el horario esté disponible
+      const isAvailable = await AvailabilityService.isTimeAvailable(
+        this.businessId,
+        bookingDate,
+        bookingTime,
+        selectedService.duration_minutes,
+        selectedService.id // Pasar serviceId para verificar recursos múltiples
+      );
+
+      if (!isAvailable) {
+        await msg.reply(
+          `❌ El horario ${bookingTime} no está disponible para esa fecha.\n\n` +
+          `Por favor selecciona otro horario o escribe "menu" para volver al inicio.`
+        );
+        return;
+      }
+
+      // Guardar el horario y solicitar nombre
+      this.userState.set(userId, {
+        ...userState,
+        step: 'booking_name',
+        bookingTime: bookingTime,
+      });
+
+      await msg.reply(
+        `✅ Horario *${bookingTime}* disponible\n\n` +
+        `👤 *Ahora necesitamos tu nombre:*\n\n` +
+        `Por favor escribe tu nombre completo para la reserva.\n\n` +
+        `💡 Escribe *"volver"* para elegir otro horario o *"menu"* para volver al inicio`
+      );
+    } catch (error) {
+      console.error('Error handling time selection:', error);
+      await msg.reply('Error al procesar la hora. Por favor intenta de nuevo.');
+    }
+  }
+
+  async handleNameInput(msg, body, userId) {
+    try {
+      // Manejar comandos de navegación
+      if (body === 'volver' || body === 'atras' || body === 'anterior') {
+        const userState = this.userState.get(userId);
+        const { bookingDate, availableTimes } = userState;
+        
+        // Volver a mostrar horarios disponibles
+        if (availableTimes && availableTimes.length > 0) {
+          // Parsear bookingDate (YYYY-MM-DD) y crear Date en zona horaria local
+          const [year, month, day] = bookingDate.split('-').map(Number);
+          const dateObj = new Date(year, month - 1, day);
+          const formattedDate = dateObj.toLocaleDateString('es-ES', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          });
+
+          let timeMessage = `📅 *Fecha seleccionada: ${formattedDate}*\n\n`;
+          timeMessage += `*Selecciona un horario disponible:*\n\n`;
+          
+          const timesToShow = availableTimes.slice(0, 12);
+          timesToShow.forEach((time, index) => {
+            const numberEmoji = this.numberToEmoji(index + 1);
+            timeMessage += `${numberEmoji} ${time}\n`;
+          });
+          
+          if (availableTimes.length > 12) {
+            timeMessage += `\n... y ${availableTimes.length - 12} horarios más\n`;
+          }
+          
+          timeMessage += `\n💡 *Opciones:*\n`;
+          timeMessage += `• Escribe el *número* del horario (ej: 1, 2, 3)\n`;
+          timeMessage += `• O escribe la *hora* directamente (ej: 14:30)\n`;
+          timeMessage += `• Escribe *"volver"* para elegir otra fecha\n`;
+          timeMessage += `• Escribe *"menu"* para volver al inicio`;
+
+          this.userState.set(userId, {
+            ...userState,
+            step: 'booking_time',
+            customerName: undefined,
+          });
+          await msg.reply(timeMessage);
+        } else {
+          await msg.reply('Por favor escribe la fecha deseada en formato DD/MM/YYYY\nEjemplo: 25/12/2024');
+          this.userState.set(userId, {
+            ...userState,
+            step: 'booking_date',
+            customerName: undefined,
+            bookingTime: undefined,
+          });
+        }
+        return;
+      }
+
+      if (body === 'menu' || body === 'inicio' || body === 'cancelar') {
+        await this.showMainMenu(msg);
+        this.userState.set(userId, { step: 'menu' });
+        return;
+      }
+
+      const customerName = body.trim();
+      
+      if (customerName.length < 2) {
+        await msg.reply(
+          `❌ Por favor ingresa un nombre válido (mínimo 2 caracteres).\n\n` +
+          `💡 Escribe *"volver"* para elegir otro horario o *"menu"* para volver al inicio`
+        );
+        return;
+      }
+
+      const userState = this.userState.get(userId);
+      
+      // Verificar si el negocio tiene habilitado el sistema de coseguro
+      await this.reloadSettings();
+      const planType = this.business?.plan_type || 'basic';
+      const insuranceEnabled = planType !== 'basic' && (this.settings?.insurance_enabled || false);
+      
+      if (insuranceEnabled) {
+        // Si tiene coseguro habilitado, preguntar por obra social
+        const providers = await InsuranceProvider.findByBusiness(this.businessId, false);
+        
+        if (providers.length === 0) {
+          // Si no hay obras sociales configuradas, continuar sin coseguro
+          await msg.reply(
+            `⚠️ El sistema de coseguro está habilitado pero no hay obras sociales configuradas.\n\n` +
+            `Continuando sin coseguro...`
+          );
+          // Continuar al paso de confirmación sin obra social
+          this.userState.set(userId, {
+            ...userState,
+            step: 'booking_confirm',
+            customerName: customerName,
+            selectedInsurance: null,
+            copayAmount: 0,
+          });
+          await this.showBookingConfirmation(msg, userId);
+          return;
+        }
+        
+        // Guardar nombre y pasar al paso de selección de obra social
+        this.userState.set(userId, {
+          ...userState,
+          step: 'booking_insurance',
+          customerName: customerName,
+        });
+        
+        // Mostrar lista de obras sociales
+        let insuranceMessage = `🏥 *¿Qué obra social tenés?*\n\n`;
+        insuranceMessage += `*Obras sociales disponibles:*\n\n`;
+        
+        providers.forEach((provider, index) => {
+          const numberEmoji = this.numberToEmoji(index + 1);
+          insuranceMessage += `${numberEmoji} *${provider.name}*\n`;
+          insuranceMessage += `   💰 Coseguro: $${parseFloat(provider.copay_amount).toFixed(2)}\n\n`;
+        });
+        
+        insuranceMessage += `💡 *Opciones:*\n`;
+        insuranceMessage += `• Escribe el *número* de tu obra social (ej: 1, 2, 3)\n`;
+        insuranceMessage += `• O escribe el *nombre* de tu obra social\n`;
+        insuranceMessage += `• Escribe *"particular"* si no tenés obra social\n`;
+        insuranceMessage += `• Escribe *"volver"* para cambiar el nombre\n`;
+        insuranceMessage += `• Escribe *"menu"* para volver al inicio`;
+        
+        await msg.reply(insuranceMessage);
+      } else {
+        // Si no tiene coseguro, continuar directamente a confirmación
+        this.userState.set(userId, {
+          ...userState,
+          step: 'booking_confirm',
+          customerName: customerName,
+          selectedInsurance: null,
+          copayAmount: 0,
+        });
+        await this.showBookingConfirmation(msg, userId);
+      }
+    } catch (error) {
+      console.error('Error handling name input:', error);
+      await msg.reply('Error al procesar el nombre. Por favor intenta de nuevo.');
+    }
+  }
+
+  async handleInsuranceSelection(msg, body, userId) {
+    try {
+      const userState = this.userState.get(userId);
+      
+      // Manejar comandos de navegación
+      if (body === 'volver' || body === 'atras' || body === 'anterior') {
+        this.userState.set(userId, {
+          ...userState,
+          step: 'booking_name',
+          selectedInsurance: undefined,
+          copayAmount: undefined,
+        });
+        await msg.reply(
+          `👤 *Ahora necesitamos tu nombre:*\n\n` +
+          `Por favor escribe tu nombre completo para la reserva.\n\n` +
+          `💡 Escribe *"volver"* para elegir otro horario o *"menu"* para volver al inicio`
+        );
+        return;
+      }
+
+      if (body === 'menu' || body === 'inicio' || body === 'cancelar') {
+        await this.showMainMenu(msg);
+        this.userState.set(userId, { step: 'menu' });
+        return;
+      }
+
+      // Obtener obras sociales disponibles
+      const providers = await InsuranceProvider.findByBusiness(this.businessId, false);
+      
+      let selectedProvider = null;
+      
+      // Intentar selección por número
+      const numberMatch = body.match(/^(\d+)$/);
+      if (numberMatch) {
+        const selectedIndex = parseInt(numberMatch[1]) - 1;
+        if (selectedIndex >= 0 && selectedIndex < providers.length) {
+          selectedProvider = providers[selectedIndex];
+        } else {
+          await msg.reply(
+            `❌ Número inválido. Por favor selecciona un número entre 1 y ${providers.length}.\n\n` +
+            `💡 Escribe *"volver"* para cambiar el nombre o *"menu"* para volver al inicio`
+          );
+          return;
+        }
+      } else if (body === 'particular' || body === 'sin obra social' || body === 'no tengo') {
+        // Usuario sin obra social
+        selectedProvider = null;
+      } else {
+        // Intentar buscar por nombre (case insensitive)
+        const searchName = body.trim();
+        selectedProvider = providers.find(p => 
+          p.name.toLowerCase().includes(searchName.toLowerCase()) ||
+          searchName.toLowerCase().includes(p.name.toLowerCase())
+        );
+        
+        if (!selectedProvider) {
+          await msg.reply(
+            `❌ No se encontró la obra social "${body}".\n\n` +
+            `💡 *Opciones:*\n` +
+            `• Escribe el *número* de tu obra social (ej: 1, 2, 3)\n` +
+            `• O escribe el *nombre* exacto de tu obra social\n` +
+            `• Escribe *"particular"* si no tenés obra social\n` +
+            `• Escribe *"volver"* para cambiar el nombre\n` +
+            `• Escribe *"menu"* para volver al inicio`
+          );
+          return;
+        }
+      }
+
+      // Guardar selección y pasar a confirmación
+      const copayAmount = selectedProvider ? parseFloat(selectedProvider.copay_amount) : 0;
+      
+      this.userState.set(userId, {
+        ...userState,
+        step: 'booking_confirm',
+        selectedInsurance: selectedProvider,
+        copayAmount: copayAmount,
+      });
+      
+      await this.showBookingConfirmation(msg, userId);
+    } catch (error) {
+      console.error('Error handling insurance selection:', error);
+      await msg.reply('Error al procesar la selección de obra social. Por favor intenta de nuevo.');
+    }
+  }
+
+  async showBookingConfirmation(msg, userId) {
+    try {
+      const userState = this.userState.get(userId);
+      const { selectedService, bookingDate, bookingTime, customerName, selectedInsurance, copayAmount } = userState;
+      
+      // Parsear bookingDate (YYYY-MM-DD) y crear Date en zona horaria local
+      const [year, month, day] = bookingDate.split('-').map(Number);
+      const dateObj = new Date(year, month - 1, day);
+      const formattedDate = dateObj.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+      // Calcular total
+      // Si hay coseguro, el monto a pagar es solo el coseguro (no servicio + coseguro)
+      // Si no hay coseguro, el monto es el precio del servicio
+      const copay = parseFloat(copayAmount) || 0;
+      const totalAmount = copay > 0 ? copay : parseFloat(selectedService.price);
+
+      // Construir mensaje de resumen
+      let summaryMessage = `📋 *Resumen de tu Reserva:*\n\n`;
+      summaryMessage += `👤 Nombre: ${customerName}\n`;
+      summaryMessage += `💼 Servicio: ${selectedService.name}\n`;
+      summaryMessage += `📅 Fecha: ${formattedDate}\n`;
+      summaryMessage += `🕐 Hora: ${bookingTime}\n`;
+      summaryMessage += `⏱️ Duración: ${selectedService.duration_minutes} minutos\n`;
+      
+      // Agregar información de obra social si aplica
+      if (selectedInsurance) {
+        summaryMessage += `🏥 Obra Social: ${selectedInsurance.name}\n`;
+        summaryMessage += `💰 *Coseguro a Pagar:* $${copay.toFixed(2)}\n`;
+      } else if (selectedService.requires_payment) {
+        summaryMessage += `💰 *Total a Pagar:* $${totalAmount.toFixed(2)}\n`;
+      } else {
+        summaryMessage += `💰 *Sin pago requerido*\n`;
+      }
+      
+      summaryMessage += `\n¿Confirmas esta reserva? Responde:\n`;
+      summaryMessage += `✅ *Sí* o *Confirmar* para confirmar\n`;
+      summaryMessage += `❌ *No* o *Cancelar* para cancelar`;
+
+      await msg.reply(summaryMessage);
+    } catch (error) {
+      console.error('Error showing booking confirmation:', error);
+      await msg.reply('Error al mostrar el resumen. Por favor intenta de nuevo.');
+    }
+  }
+
+  async handleBookingConfirmation(msg, body, userId) {
+    try {
+      const confirmation = body.toLowerCase().trim();
+      const isConfirmed = confirmation === 'sí' || 
+                         confirmation === 'si' || 
+                         confirmation === 'confirmar' || 
+                         confirmation === 'confirmo' ||
+                         confirmation === 'yes';
+
+      if (!isConfirmed) {
+        await msg.reply('Reserva cancelada. Escribe "menu" para volver al inicio.');
+        this.userState.set(userId, { step: 'menu' });
+        return;
+      }
+
+      const userState = this.userState.get(userId);
+      const { selectedService, bookingDate, bookingTime, customerName } = userState;
+
+      // Validar nuevamente disponibilidad antes de crear
+      const isAvailable = await AvailabilityService.isTimeAvailable(
+        this.businessId,
+        bookingDate,
+        bookingTime,
+        selectedService.duration_minutes,
+        selectedService.id // Pasar serviceId para verificar recursos múltiples
+      );
+
+      if (!isAvailable) {
+        await msg.reply(
+          `❌ Lo siento, el horario ${bookingTime} ya no está disponible.\n\n` +
+          `Por favor inicia una nueva reserva escribiendo "reservar" o "menu".`
+        );
+        this.userState.set(userId, { step: 'menu' });
+        return;
+      }
+
+      // Crear la reserva
+      const customerPhone = await this.getCustomerPhone(msg);
+      
+      // Obtener información de obra social si está seleccionada
+      const selectedInsurance = userState.selectedInsurance || null;
+      const copayAmount = userState.copayAmount || 0;
+      const insuranceProviderName = selectedInsurance ? selectedInsurance.name : null;
+      const insuranceProviderId = selectedInsurance ? selectedInsurance.id : null;
+      
+      // Calcular monto total
+      // Si hay coseguro, el monto a pagar es solo el coseguro (no servicio + coseguro)
+      // Si no hay coseguro y el servicio requiere pago, el monto es el precio del servicio
+      // Si el servicio no requiere pago, el monto es 0
+      const copay = parseFloat(copayAmount) || 0;
+      let totalAmount = 0;
+      if (copay > 0) {
+        totalAmount = copay; // Solo el coseguro
+      } else if (selectedService.requires_payment) {
+        totalAmount = parseFloat(selectedService.price);
+      } else {
+        totalAmount = 0; // Sin pago requerido
+      }
+
+      // Determinar si se requiere pago
+      const requiresPayment = selectedService.requires_payment && totalAmount > 0;
+      const paymentsEnabled = requiresPayment && await PaymentConfigService.isEnabled(this.businessId);
+
+      console.log('[MessageHandler] Creating booking:', {
+        business_id: this.businessId,
+        service_id: selectedService.id,
+        customer_phone: customerPhone,
+        customer_name: customerName,
+        booking_date: bookingDate,
+        booking_time: bookingTime,
+        amount: totalAmount,
+        service_price: selectedService.price,
+        service_requires_payment: selectedService.requires_payment,
+        copay_amount: copayAmount,
+        insurance_provider_id: insuranceProviderId,
+        insurance_provider_name: insuranceProviderName,
+        requiresPayment,
+        paymentsEnabled,
+      });
+      
+      // Si el servicio no requiere pago, confirmar directamente
+      const initialStatus = requiresPayment && paymentsEnabled ? 'pending_payment' : 'confirmed';
+      
+      // Verificar si el servicio tiene recursos múltiples y asignar automáticamente uno disponible
+      let assignedResource = null;
+      let assignedResourceName = null;
+
+      if (selectedService.has_multiple_resources) {
+        try {
+          const { ServiceResource } = await import('../../../database/models/ServiceResource.js');
+          assignedResource = await ServiceResource.assignAvailableResource(
+            selectedService.id,
+            bookingDate,
+            bookingTime
+          );
+
+          if (assignedResource) {
+            assignedResourceName = assignedResource.name;
+            console.log('[MessageHandler] Recurso asignado automáticamente:', {
+              resourceId: assignedResource.id,
+              resourceName: assignedResource.name,
+              serviceId: selectedService.id,
+              bookingDate,
+              bookingTime,
+            });
+          } else {
+            console.warn('[MessageHandler] No hay recursos disponibles, pero el horario está disponible');
+            // Aunque no debería pasar si la lógica de disponibilidad está correcta
+          }
+        } catch (error) {
+          console.error('[MessageHandler] Error asignando recurso:', error);
+          // Continuar sin recurso asignado si hay error
+        }
+      }
+
+      const booking = await Booking.create({
+        business_id: this.businessId,
+        service_id: selectedService.id,
+        customer_phone: customerPhone,
+        customer_name: customerName,
+        booking_date: bookingDate,
+        booking_time: bookingTime,
+        amount: totalAmount,
+        insurance_provider_id: insuranceProviderId,
+        copay_amount: copayAmount,
+        insurance_provider_name: insuranceProviderName,
+        resource_id: assignedResource?.id || null,
+        resource_name: assignedResourceName,
+        status: initialStatus,
+        payment_status: requiresPayment ? 'pending' : 'paid', // Si no requiere pago, marcar como pagado
+      });
+      
+      console.log('[MessageHandler] Booking created successfully:', {
+        id: booking.id,
+        status: booking.status,
+        customer_phone: booking.customer_phone,
+      });
+
+      // Enviar notificación al dueño (en segundo plano, no bloquea el flujo)
+      try {
+        const { notifyOwnerNewBooking } = await import('../../services/ownerNotificationService.js');
+        notifyOwnerNewBooking(booking).catch(err => {
+          console.error('[MessageHandler] Error enviando notificación al dueño:', err);
+        });
+      } catch (error) {
+        console.error('[MessageHandler] Error importando servicio de notificaciones:', error);
+      }
+
+      // Si no requiere pago, confirmar directamente
+      if (!requiresPayment) {
+        const confirmationMessage = this.settings?.booking_confirmation_message || 
+          'Tu reserva ha sido confirmada. Te esperamos en la fecha y hora acordada.';
+        
+        await msg.reply(
+          `✅ *Reserva Confirmada*\n\n` +
+          `${confirmationMessage}\n\n` +
+          `📋 *Detalles:*\n` +
+          `👤 ${customerName}\n` +
+          `💼 ${selectedService.name}\n` +
+          `📅 ${formattedDate}\n` +
+          `🕐 ${bookingTime}\n\n` +
+          `¡Te esperamos!`
+        );
+        
+        this.userState.set(userId, { step: 'menu' });
+        return;
+      }
+
+      // Si requiere pago, continuar con el flujo de MercadoPago
+      if (paymentsEnabled) {
+        try {
+          const business = this.business || await Business.findById(this.businessId);
+          const preference = await PaymentService.createPreference({
+            business,
+            booking,
+            service: selectedService,
+          });
+
+          await Booking.update(booking.id, {
+            payment_preference_id: preference.id,
+            payment_init_point: preference.init_point,
+            payment_sandbox_init_point: preference.sandbox_init_point,
+          });
+
+          // En v2, init_point puede estar en preference.init_point o preference.sandbox_init_point
+          const paymentLink = preference.init_point || preference.sandbox_init_point || preference.init_point;
+
+          await msg.reply(
+            `✅ *Reserva registrada*\n\n` +
+            `Para confirmar tu turno realiza el pago en el siguiente enlace:\n${paymentLink}\n\n` +
+            `Apenas se acredite recibirás la confirmación.`
+          );
+        } catch (paymentError) {
+          console.error('Error creating MercadoPago preference:', paymentError);
+          await msg.reply(
+            'Registramos tu reserva pero no pudimos generar el link de pago. Intenta nuevamente en unos minutos o contacta al negocio.'
+          );
+        }
+
+        this.userState.set(userId, { step: 'menu' });
+        return;
+      }
+
+      // Parsear bookingDate (YYYY-MM-DD) y crear Date en zona horaria local
+      const [year, month, day] = bookingDate.split('-').map(Number);
+      const dateObj = new Date(year, month - 1, day);
+      const formattedDate = dateObj.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+      // Recargar settings para obtener mensaje más reciente
+      await this.reloadSettings();
+      
+      const confirmationMessage = this.settings?.booking_confirmation_message || 
+        'Tu reserva ha sido registrada exitosamente.';
+
+      await msg.reply(
+        `✅ *¡Reserva Confirmada!*\n\n` +
+        `📋 *Detalles:*\n` +
+        `👤 Nombre: ${customerName}\n` +
+        `💼 Servicio: ${selectedService.name}\n` +
+        `📅 Fecha: ${formattedDate}\n` +
+        `🕐 Hora: ${bookingTime}\n` +
+        `💰 Monto: $${this.formatPrice(selectedService.price)}\n\n` +
+        `${confirmationMessage}\n\n` +
+        `🆔 ID de reserva: ${booking.id}\n\n` +
+        `Escribe "menu" para ver más opciones.`
+      );
+
+      // Resetear estado
+      this.userState.set(userId, { step: 'menu' });
+    } catch (error) {
+      console.error('Error handling booking confirmation:', error);
+      await msg.reply('Error al crear la reserva. Por favor intenta más tarde.');
+      this.userState.set(userId, { step: 'menu' });
+    }
+  }
+
+  async showAvailability(msg) {
+    try {
+      await msg.reply('Consultando disponibilidad... ⏳');
+      
+      const availability = await AvailabilityService.getAvailabilityForNextDays(
+        this.businessId,
+        7 // Próximos 7 días
+      );
+
+      if (Object.keys(availability).length === 0) {
+        await msg.reply('No hay horarios disponibles en los próximos 7 días.');
+        return;
+      }
+
+      const message = AvailabilityService.formatAvailabilityMessage(availability, 7);
+      await msg.reply(message);
+    } catch (error) {
+      console.error('Error showing availability:', error);
+      await msg.reply('Error al consultar disponibilidad. Por favor intenta más tarde.');
+    }
+  }
+
+  async showUserBookings(msg) {
+    try {
+      const customerPhone = await this.getCustomerPhone(msg);
+      const bookings = await Booking.findByCustomer(customerPhone);
+
+      if (bookings.length === 0) {
+        await msg.reply('No tienes reservas registradas.');
+        return;
+      }
+
+      let message = '*📋 Tus Reservas:*\n\n';
+      bookings.slice(0, 10).forEach((booking, index) => {
+        // Parsear booking_date (YYYY-MM-DD) y crear Date en zona horaria local
+        const [year, month, day] = booking.booking_date.split('-').map(Number);
+        const dateObj = new Date(year, month - 1, day);
+        const formattedDate = dateObj.toLocaleDateString('es-ES', {
+          weekday: 'short',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+
+        const statusEmoji = {
+          'pending': '⏳',
+          'confirmed': '✅',
+          'cancelled': '❌',
+          'completed': '✔️'
+        };
+
+        message += `${index + 1}. ${statusEmoji[booking.status] || '📌'} *${booking.service_name}*\n`;
+        message += `   📅 ${formattedDate} a las ${booking.booking_time}\n`;
+        message += `   💰 $${booking.amount.toFixed(2)}\n`;
+        message += `   Estado: ${booking.status === 'pending' ? 'Pendiente' : 
+                              booking.status === 'confirmed' ? 'Confirmada' :
+                              booking.status === 'cancelled' ? 'Cancelada' :
+                              booking.status === 'completed' ? 'Completada' : booking.status}\n\n`;
+      });
+
+      message += 'Escribe "menu" para volver al menú principal.';
+      await msg.reply(message);
+    } catch (error) {
+      console.error('Error showing user bookings:', error);
+      await msg.reply('Error al obtener tus reservas. Por favor intenta más tarde.');
+    }
+  }
+}
+
