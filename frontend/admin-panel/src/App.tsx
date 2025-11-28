@@ -22,14 +22,28 @@ function App() {
           element={isAuthenticated ? <Navigate to={isSuperAdmin ? "/admin/businesses" : "/dashboard"} replace /> : <Login />}
         />
         {isSuperAdmin ? (
-          <Route
-            path="/admin"
-            element={isAuthenticated ? <Layout /> : <Navigate to="/login" replace />}
-          >
-            <Route path="businesses" element={<AdminBusinesses />} />
-            <Route path="shortlinks" element={<Shortlinks />} />
-            <Route index element={<Navigate to="/admin/businesses" replace />} />
-          </Route>
+          <>
+            <Route
+              path="/admin"
+              element={isAuthenticated ? <Layout /> : <Navigate to="/login" replace />}
+            >
+              <Route path="businesses" element={<AdminBusinesses />} />
+              <Route path="shortlinks" element={<Shortlinks />} />
+              <Route index element={<Navigate to="/admin/businesses" replace />} />
+            </Route>
+            {/* Ruta para ver panel de negocio como super admin */}
+            <Route
+              path="/admin/businesses/:businessId/view"
+              element={isAuthenticated ? <Layout /> : <Navigate to="/login" replace />}
+            >
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="services" element={<Services />} />
+              <Route path="bookings" element={<Bookings />} />
+              <Route path="availability" element={<Availability />} />
+              <Route path="settings" element={<Settings />} />
+              <Route index element={<Navigate to="dashboard" replace />} />
+            </Route>
+          </>
         ) : (
           <Route
             path="/"

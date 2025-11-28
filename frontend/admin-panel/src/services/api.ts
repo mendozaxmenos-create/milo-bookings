@@ -37,6 +37,18 @@ api.interceptors.request.use((config) => {
       if (parsed.state?.token) {
         config.headers.Authorization = `Bearer ${parsed.state.token}`;
       }
+      
+      // Si el usuario es super admin y estamos viendo un negocio específico,
+      // agregar el business_id como header
+      const user = parsed.state?.user;
+      if (user?.is_system_user && user?.role === 'super_admin') {
+        // Extraer businessId de la URL actual si estamos en la ruta de vista
+        const currentPath = window.location.pathname;
+        const match = currentPath.match(/\/admin\/businesses\/([^/]+)\/view/);
+        if (match && match[1]) {
+          config.headers['X-Business-Id'] = match[1];
+        }
+      }
     } catch {
       // Ignore parse errors from stale storage entries
     }

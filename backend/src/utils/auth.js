@@ -32,15 +32,33 @@ export function authenticateToken(req, res, next) {
     return res.status(403).json({ error: 'Invalid or expired token' });
   }
 
-  console.log('[Auth] Authenticated user:', {
-    path: req.path,
-    user_id: decoded.user_id,
-    business_id: decoded.business_id,
-    role: decoded.role,
-    is_system_user: decoded.is_system_user,
-  });
+  // Si el usuario es super admin y hay un header X-Business-Id,
+  // usar ese business_id para permitir ver el panel de otro negocio
+  if (decoded.is_system_user && decoded.role === 'super_admin' && req.headers['x-business-id']) {
+    const targetBusinessId = req.headers['x-business-id'];
+    console.log('[Auth] Super admin viewing business:', {
+      path: req.path,
+      user_id: decoded.user_id,
+      original_business_id: decoded.business_id,
+      target_business_id: targetBusinessId,
+      role: decoded.role,
+    });
+    // Crear un objeto user con el business_id del header
+    req.user = {
+      ...decoded,
+      business_id: targetBusinessId,
+    };
+  } else {
+    console.log('[Auth] Authenticated user:', {
+      path: req.path,
+      user_id: decoded.user_id,
+      business_id: decoded.business_id,
+      role: decoded.role,
+      is_system_user: decoded.is_system_user,
+    });
+    req.user = decoded;
+  }
 
-  req.user = decoded;
   next();
 }
 

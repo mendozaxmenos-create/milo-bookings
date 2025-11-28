@@ -273,7 +273,7 @@ export function AdminBusinesses() {
               <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
                 <button
                   onClick={() => {
-                    window.open(`/?business=${business.id}`, '_blank');
+                    window.open(`/admin/businesses/${business.id}/view/dashboard`, '_blank');
                   }}
                   style={{
                     padding: '0.5rem 1rem',
