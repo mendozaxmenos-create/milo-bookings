@@ -96,17 +96,6 @@ export function AdminBusinesses() {
     },
   });
 
-  const migrateMutation = useMutation({
-    mutationFn: migrateShortlinksToBusinesses,
-    onSuccess: (data) => {
-      alert(`Migración completada: ${data.message}`);
-      queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
-    },
-    onError: (error: any) => {
-      alert(`Error en migración: ${error.response?.data?.error || error.message}`);
-    },
-  });
-
   const loadQRCode = async (businessId: string) => {
     try {
       const response = await getBusinessQR(businessId);
