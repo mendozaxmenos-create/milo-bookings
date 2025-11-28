@@ -1,0 +1,30 @@
+# ⚠️ IMPORTANTE: Cerrar editor de Git primero
+# Si ves "-- INSERT --" o similar, presiona:
+# 1. ESC
+# 2. Escribe: :q!
+# 3. Enter
+
+# Luego ejecuta estos comandos:
+
+# 1. Verificar cambios
+git status
+
+# 2. Agregar archivos del endpoint de shortlinks
+git add backend/src/api/routes/shortlinks.js
+git add backend/src/api/server.js
+git add frontend/admin-panel/src/services/api.ts
+
+# 3. Crear commit
+git commit -m "feat: Agregar endpoint /api/shortlinks en backend"
+
+# 4. Crear rama y subir
+git checkout -b fix/endpoint-shortlinks-backend
+git push -u origin fix/endpoint-shortlinks-backend
+
+# 5. Crear Pull Request desde esta URL:
+# https://github.com/mendozaxmenos-create/milo-bookings/compare/main...fix/endpoint-shortlinks-backend
+
+# 6. Después de mergear el PR, Render redeployará automáticamente
+# (puede tardar 2-3 minutos)
+
+

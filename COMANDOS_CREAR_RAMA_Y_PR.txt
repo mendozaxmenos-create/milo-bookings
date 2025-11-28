@@ -1,0 +1,20 @@
+# ========================================
+# COMANDOS PARA CREAR RAMA Y PR
+# ========================================
+# Ejecuta estos comandos UNO POR UNO
+# ========================================
+
+# 1. Crear nueva rama desde main (con los commits locales)
+git checkout -b fix/rutas-api-y-qr-shortlinks
+
+# 2. Subir la rama a GitHub
+git push -u origin fix/rutas-api-y-qr-shortlinks
+
+# ========================================
+# DESPUÉS DEL PUSH:
+# ========================================
+# Ve a esta URL para crear el PR:
+# https://github.com/mendozaxmenos-create/milo-bookings/compare/main...fix/rutas-api-y-qr-shortlinks
+# ========================================
+
+

@@ -1,0 +1,41 @@
+# ========================================
+# COMANDOS PARA VERIFICAR Y SUBIR TODOS LOS CAMBIOS
+# ========================================
+# Ejecuta estos comandos UNO POR UNO
+# ========================================
+
+# 1. Ir al directorio
+cd C:\Users\gusta\Desktop\milo-bookings
+
+# 2. Cambiar a main
+git checkout main
+
+# 3. Actualizar desde GitHub
+git pull origin main
+
+# 4. Verificar estado (ver qué cambios hay)
+git status
+
+# 5. Agregar TODOS los cambios (incluyendo QR para shortlinks)
+git add -A
+
+# 6. Ver qué se va a commitear
+git status
+
+# 7. Hacer commit con TODOS los cambios
+git commit -m "fix: Corregir rutas de API y agregar QR para shortlinks"
+
+# 8. Crear nueva rama
+git checkout -b fix/rutas-api-y-qr-shortlinks
+
+# 9. Subir la rama
+git push -u origin fix/rutas-api-y-qr-shortlinks
+
+# ========================================
+# DESPUÉS DEL PUSH:
+# ========================================
+# Ve a esta URL para crear el PR:
+# https://github.com/mendozaxmenos-create/milo-bookings/compare/main...fix/rutas-api-y-qr-shortlinks
+# ========================================
+
+

@@ -1,0 +1,20 @@
+# Ejecuta estos comandos para verificar:
+
+# 1. Ver el último commit de tu rama y qué archivos incluye
+git log fix/endpoint-shortlinks-backend --oneline -1
+git show --name-only fix/endpoint-shortlinks-backend
+
+# 2. Ver si los archivos existen en main
+git checkout main
+git log --oneline -5
+git show --name-only HEAD
+
+# 3. Volver a tu rama
+git checkout fix/endpoint-shortlinks-backend
+
+# 4. Si los archivos NO están en el commit, hacer commit de nuevo:
+git add backend/src/api/routes/shortlinks.js backend/src/api/server.js frontend/admin-panel/src/services/api.ts
+git commit -m "feat: Agregar endpoint /api/shortlinks en backend"
+git push origin fix/endpoint-shortlinks-backend --force
+
+

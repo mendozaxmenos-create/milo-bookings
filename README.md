@@ -82,6 +82,14 @@
 - **Notificaciones al Dueño** - Múltiples teléfonos y mensajes personalizables
 - **Configuración de Pagos** - Credenciales de MercadoPago
 
+#### 🔗 Gestión de Shortlinks (Super Admin)
+- **Crear Shortlinks** - Generar links cortos personalizados para cada comercio
+- **Gestión Completa** - Crear, editar, eliminar shortlinks desde el panel
+- **Generación de QR** - Generar código QR automáticamente para cada shortlink
+- **Descarga de QR** - Descargar QR como imagen PNG para compartir
+- **Multi-tenant** - Cada comercio tiene su shortlink único
+- **Redirección Automática** - Shortlinks redirigen a WhatsApp con identificación del comercio
+
 #### 🔔 Notificaciones
 - **Notificaciones al Dueño** - WhatsApp cuando hay nueva reserva
 - **Recordatorios a Clientes** - Automáticos antes de la cita
@@ -414,6 +422,12 @@ VITE_PORT=3001
 - `DELETE /api/backups/:fileName` - Eliminar backup
 - `POST /api/backups/:fileName/restore` - Restaurar backup (⚠️ peligroso)
 
+### Shortlinks (Multi-tenant)
+- `GET /api/shortlinks` - Listar shortlinks (filtrado por permisos)
+- `POST /api/shortlinks` - Crear nuevo shortlink
+- `PUT /api/shortlinks/:slug` - Actualizar shortlink
+- `DELETE /api/shortlinks/:slug` - Eliminar shortlink (soft delete)
+
 ### Admin (Super Admin Only)
 - `GET /api/admin/businesses` - Listar todos los negocios
 - `POST /api/admin/businesses` - Crear negocio
@@ -541,6 +555,8 @@ El MVP está **100% completo** con todas las funcionalidades críticas implement
 - ✅ **Multigestión (Recursos Múltiples)** - Sistema completo para servicios con múltiples unidades
 - ✅ **Obras Sociales y Coseguros** - Sistema completo para servicios médicos
 - ✅ **Backup Automático** - Backups diarios y gestión manual
+- ✅ **Sistema de Shortlinks** - Links cortos personalizados para cada comercio (Nov 2025)
+- ✅ **Generación de QR** - QR codes automáticos para compartir shortlinks (Nov 2025)
 
 ### 📝 Próximas Features (Roadmap)
 
@@ -644,9 +660,10 @@ El bot guía al cliente paso a paso:
 
 ---
 
-**Última actualización:** Enero 2025  
+**Última actualización:** Noviembre 2025  
 **Versión:** 1.0.0  
-**Estado:** ✅ MVP Completo - Listo para Producción
+**Estado:** ✅ MVP Completo - Listo para Producción  
+**Nuevas Features:** Sistema de Shortlinks + Generación de QR (Nov 2025)
 
 ---
 
