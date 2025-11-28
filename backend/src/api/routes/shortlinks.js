@@ -1,6 +1,7 @@
 import express from 'express';
 import { ClientService } from '../../services/clientService.js';
 import { authenticateToken } from '../../utils/auth.js';
+import { Business } from '../../../database/models/Business.js';
 
 const router = express.Router();
 
@@ -78,6 +79,29 @@ router.post('/', async (req, res) => {
     } else if (!isSuperAdmin) {
       // Si no es super admin y no se proporciona businessId, usar el del usuario
       finalBusinessId = req.user.business_id;
+    } else {
+      // Si es super admin y no se proporciona businessId, crear un nuevo business automáticamente
+      console.log(`[Shortlinks] Creando business automáticamente para shortlink: ${name}`);
+      try {
+        const newBusiness = await Business.create({
+          name: name,
+          phone: null, // Se puede actualizar después
+          email: null,
+          whatsapp_number: null, // Se puede actualizar después
+          owner_phone: null,
+          is_active: true,
+          plan_type: 'basic', // Plan básico por defecto
+          is_trial: false,
+        });
+        finalBusinessId = newBusiness.id;
+        console.log(`[Shortlinks] ✅ Business creado automáticamente: ${newBusiness.id} para ${name}`);
+      } catch (error) {
+        console.error('[Shortlinks] ❌ Error creando business automáticamente:', error);
+        return res.status(500).json({ 
+          error: 'Error creating business automatically', 
+          message: error.message 
+        });
+      }
     }
 
     // Verificar si el slug ya existe
