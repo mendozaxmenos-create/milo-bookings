@@ -34,8 +34,10 @@ export function authenticateToken(req, res, next) {
 
   // Si el usuario es super admin y hay un header X-Business-Id,
   // usar ese business_id para permitir ver el panel de otro negocio
-  if (decoded.is_system_user && decoded.role === 'super_admin' && req.headers['x-business-id']) {
-    const targetBusinessId = req.headers['x-business-id'];
+  // Nota: Express normaliza headers a lowercase, así que buscamos en ambos formatos
+  const businessIdHeader = req.headers['x-business-id'] || req.headers['X-Business-Id'];
+  if (decoded.is_system_user && decoded.role === 'super_admin' && businessIdHeader) {
+    const targetBusinessId = businessIdHeader;
     console.log('[Auth] Super admin viewing business:', {
       path: req.path,
       user_id: decoded.user_id,

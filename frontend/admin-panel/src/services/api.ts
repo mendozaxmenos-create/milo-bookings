@@ -46,7 +46,13 @@ api.interceptors.request.use((config) => {
         const currentPath = window.location.pathname;
         const match = currentPath.match(/\/admin\/businesses\/([^/]+)\/view/);
         if (match && match[1]) {
-          config.headers['X-Business-Id'] = match[1];
+          const businessId = match[1];
+          config.headers['X-Business-Id'] = businessId;
+          console.log('[API] Super admin viewing business, adding header:', {
+            path: currentPath,
+            businessId,
+            url: config.url,
+          });
         }
       }
     } catch {
