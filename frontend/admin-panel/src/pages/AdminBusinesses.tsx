@@ -9,6 +9,7 @@ import {
   getSubscriptionPrice,
   updateSubscriptionPrice,
   migrateShortlinksToBusinesses,
+  getShortlinks,
   type Business,
   type CreateBusinessRequest,
 } from '../services/api';
@@ -84,23 +85,42 @@ export function AdminBusinesses() {
     },
   });
 
+  const [shortlinkUrl, setShortlinkUrl] = useState<string | null>(null);
+
   const loadQRCode = async (businessId: string) => {
     try {
-      const response = await getBusinessQR(businessId);
-      if (response.data.qr) {
-        setQrCode(response.data.qr);
+      // Primero intentar obtener el shortlink asociado al negocio
+      const shortlinksResponse = await getShortlinks();
+      const shortlink = shortlinksResponse.shortlinks.find(s => s.business_id === businessId);
+      
+      if (shortlink) {
+        // Si hay shortlink, usar su URL para el QR
+        setShortlinkUrl(shortlink.url);
+        setQrCode(shortlink.url); // Guardamos la URL para generar el QR
+        console.log('[Admin] Shortlink encontrado para negocio:', { businessId, shortlinkUrl: shortlink.url });
       } else {
-        setQrCode(null);
+        // Si no hay shortlink, usar el QR del bot como fallback
+        console.log('[Admin] No hay shortlink para negocio, usando QR del bot:', businessId);
+        const response = await getBusinessQR(businessId);
+        if (response.data.qr) {
+          setQrCode(response.data.qr);
+          setShortlinkUrl(null);
+        } else {
+          setQrCode(null);
+          setShortlinkUrl(null);
+        }
       }
     } catch (error) {
       console.error('Error loading QR:', error);
       setQrCode(null);
+      setShortlinkUrl(null);
     }
   };
 
   const handleShowQR = async (business: Business) => {
     setSelectedBusiness(business);
     setShowQRModal(true);
+    setShortlinkUrl(null);
     await loadQRCode(business.id);
   };
 
@@ -333,10 +353,12 @@ export function AdminBusinesses() {
         <QRModal
           business={selectedBusiness}
           qrCode={qrCode}
+          shortlinkUrl={shortlinkUrl}
           onClose={() => {
             setShowQRModal(false);
             setSelectedBusiness(null);
             setQrCode(null);
+            setShortlinkUrl(null);
           }}
           onRefresh={() => loadQRCode(selectedBusiness.id)}
         />
@@ -488,14 +510,18 @@ function CreateBusinessModal({
 function QRModal({
   business,
   qrCode,
+  shortlinkUrl,
   onClose,
   onRefresh,
 }: {
   business: Business;
   qrCode: string | null;
+  shortlinkUrl: string | null;
   onClose: () => void;
   onRefresh: () => void;
 }) {
+  const isShortlinkQR = shortlinkUrl !== null;
+  
   return (
     <div
       style={{
@@ -520,33 +546,52 @@ function QRModal({
           maxWidth: '400px',
         }}
       >
-        <h2 style={{ marginTop: 0 }}>QR Code - {business.name}</h2>
+        <h2 style={{ marginTop: 0 }}>
+          {isShortlinkQR ? 'QR Code Shortlink' : 'QR Code Bot'} - {business.name}
+        </h2>
         {qrCode ? (
           <>
             <div style={{ margin: '1rem 0' }}>
               <QRCode value={qrCode} size={256} />
             </div>
-            <p style={{ color: '#6c757d', fontSize: '0.875rem' }}>
-              Escanea este código con WhatsApp para conectar el bot
-            </p>
+            {isShortlinkQR ? (
+              <>
+                <p style={{ color: '#6c757d', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                  Escanea este código para abrir el shortlink
+                </p>
+                <p style={{ color: '#007bff', fontSize: '0.875rem', fontWeight: 'bold', wordBreak: 'break-all' }}>
+                  {shortlinkUrl}
+                </p>
+              </>
+            ) : (
+              <p style={{ color: '#6c757d', fontSize: '0.875rem' }}>
+                Escanea este código con WhatsApp para conectar el bot
+              </p>
+            )}
           </>
         ) : (
           <div>
-            <p>El bot ya está conectado o no hay QR disponible.</p>
-            <button
-              onClick={onRefresh}
-              style={{
-                marginTop: '1rem',
-                padding: '0.5rem 1rem',
-                backgroundColor: '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-              }}
-            >
-              Refrescar
-            </button>
+            <p>
+              {isShortlinkQR 
+                ? 'No hay shortlink asociado a este negocio.' 
+                : 'El bot ya está conectado o no hay QR disponible.'}
+            </p>
+            {!isShortlinkQR && (
+              <button
+                onClick={onRefresh}
+                style={{
+                  marginTop: '1rem',
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}
+              >
+                Refrescar
+              </button>
+            )}
           </div>
         )}
         <button
