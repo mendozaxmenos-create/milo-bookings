@@ -689,12 +689,13 @@ router.post('/migrate-shortlinks-to-businesses', async (req, res) => {
     for (const client of clientsWithoutBusiness) {
       try {
         // Crear business para este shortlink
+        // Usar valores por defecto ya que los campos son notNullable en la BD
         const business = await Business.create({
           name: client.name,
-          phone: null,
+          phone: '+5490000000000', // Valor temporal, se puede actualizar después
           email: null,
-          whatsapp_number: null,
-          owner_phone: null,
+          whatsapp_number: '+5490000000000', // Valor temporal, se puede actualizar después
+          owner_phone: '+5490000000000', // Valor temporal, se puede actualizar después
           is_active: true,
           plan_type: 'basic',
           is_trial: false,
@@ -713,11 +714,13 @@ router.post('/migrate-shortlinks-to-businesses', async (req, res) => {
         
         console.log(`[Admin] ✅ Shortlink ${client.slug} migrado a business ${business.id}`);
       } catch (error) {
-        console.error(`[Admin] ❌ Error migrando shortlink ${client.slug}:`, error.message);
+        console.error(`[Admin] ❌ Error migrando shortlink ${client.slug}:`, error);
+        console.error(`[Admin] Error stack:`, error.stack);
         results.push({
           shortlink: client.slug,
           status: 'error',
-          error: error.message,
+          error: error.message || 'Unknown error',
+          details: error.stack || undefined,
         });
       }
     }
