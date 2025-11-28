@@ -196,6 +196,21 @@ export const updateSubscriptionPrice = async (price: string): Promise<Subscripti
   return response.data;
 };
 
+export interface MigrateShortlinksResponse {
+  message: string;
+  results: Array<{
+    shortlink: string;
+    business_id?: string;
+    status: 'success' | 'error';
+    error?: string;
+  }>;
+}
+
+export const migrateShortlinksToBusinesses = async (): Promise<MigrateShortlinksResponse> => {
+  const response = await api.post<MigrateShortlinksResponse>('/api/admin/migrate-shortlinks-to-businesses');
+  return response.data;
+};
+
 // Shortlinks API
 export interface Shortlink {
   slug: string;

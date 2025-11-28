@@ -9,6 +9,7 @@ import {
   reconnectBusinessBot,
   getSubscriptionPrice,
   updateSubscriptionPrice,
+  migrateShortlinksToBusinesses,
   type Business,
   type CreateBusinessRequest,
 } from '../services/api';
@@ -79,6 +80,30 @@ export function AdminBusinesses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscription-price'] });
       setShowPriceModal(false);
+    },
+  });
+
+  const migrateMutation = useMutation({
+    mutationFn: migrateShortlinksToBusinesses,
+    onSuccess: (data) => {
+      const successCount = data.results.filter(r => r.status === 'success').length;
+      const errorCount = data.results.filter(r => r.status === 'error').length;
+      alert(`✅ Migración completada:\n${successCount} exitosos\n${errorCount} errores\n\n${data.message}`);
+      queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
+    },
+    onError: (error: any) => {
+      alert(`❌ Error en migración: ${error.response?.data?.error || error.message}`);
+    },
+  });
+
+  const migrateMutation = useMutation({
+    mutationFn: migrateShortlinksToBusinesses,
+    onSuccess: (data) => {
+      alert(`Migración completada: ${data.message}`);
+      queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
+    },
+    onError: (error: any) => {
+      alert(`Error en migración: ${error.response?.data?.error || error.message}`);
     },
   });
 
@@ -155,7 +180,25 @@ export function AdminBusinesses() {
     <div style={{ padding: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h1>Gestión de Negocios</h1>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => {
+              if (confirm('¿Migrar shortlinks sin business a negocios? Esto creará un negocio para cada shortlink que no tenga business_id asociado.')) {
+                migrateMutation.mutate();
+              }
+            }}
+            disabled={migrateMutation.isPending}
+            style={{
+              padding: '0.75rem 1.5rem',
+              backgroundColor: migrateMutation.isPending ? '#6c757d' : '#ffc107',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: migrateMutation.isPending ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {migrateMutation.isPending ? '⏳ Migrando...' : '🔄 Migrar Shortlinks a Negocios'}
+          </button>
           <button
             onClick={() => setShowPriceModal(true)}
             style={{
