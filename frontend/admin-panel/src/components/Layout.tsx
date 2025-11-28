@@ -17,7 +17,10 @@ export function Layout() {
   // Obtener información del negocio si estamos viéndolo
   const { data: businessData } = useQuery({
     queryKey: ['business', businessId],
-    queryFn: () => getBusiness(businessId!),
+    queryFn: () => {
+      if (!businessId) throw new Error('Business ID is required');
+      return getBusiness(businessId);
+    },
     enabled: !!isViewingBusiness && !!businessId,
   });
 
