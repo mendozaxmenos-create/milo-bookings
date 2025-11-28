@@ -58,7 +58,9 @@ CREDENTIALS*.md
 
 # Temporary scripts and documentation
 *.bat
+!auto-push.bat
 *.ps1
+!auto-push.ps1
 COMANDOS*.txt
 EJECUTAR*.txt
 VERIFICAR*.txt
