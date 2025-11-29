@@ -400,6 +400,21 @@ export function AdminBusinesses() {
                 >
                   {business.is_active ? 'Desactivar' : 'Activar'}
                 </button>
+                <button
+                  onClick={() => handlePermanentlyDelete(business)}
+                  disabled={permanentlyDeleteMutation.isPending}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    backgroundColor: permanentlyDeleteMutation.isPending ? '#6c757d' : '#721c24',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: permanentlyDeleteMutation.isPending ? 'not-allowed' : 'pointer',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  {permanentlyDeleteMutation.isPending ? 'Eliminando...' : '🗑️ Eliminar'}
+                </button>
               </div>
             </div>
           </div>
