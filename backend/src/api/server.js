@@ -19,6 +19,7 @@ import backupsRoutes from './routes/backups.js';
 import whatsappRoutes from './routes/whatsapp.js';
 import shortlinksRoutes from './routes/shortlinks.js';
 import dashboardRoutes from './routes/dashboard.js';
+import plansRoutes from './routes/plans.js';
 console.log('[Server] Shortlinks routes imported:', !!shortlinksRoutes, typeof shortlinksRoutes);
 
 dotenv.config();
@@ -214,6 +215,7 @@ app.get('/', (req, res) => {
       whatsapp: '/api/whatsapp/webhook',
       shortlinks: '/api/shortlinks',
       dashboard: '/api/dashboard',
+      plans: '/api/plans',
     },
   };
   console.log('[Root] Enviando respuesta');
@@ -374,6 +376,7 @@ app.use('/api/service-resources', serviceResourcesRoutes);
 app.use('/api/backups', backupsRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/plans', plansRoutes);
 if (shortlinksRoutes) {
   console.log('[Server] ✅ Registering shortlinks routes at /api/shortlinks');
   app.use('/api/shortlinks', shortlinksRoutes);

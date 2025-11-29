@@ -29,7 +29,19 @@ router.get('/stats', async (req, res) => {
 
     // Obtener plan del negocio para determinar qué métricas mostrar
     const business = await Business.findById(businessId);
-    const planType = business?.plan_type || 'basic';
+    let planType = 'basic'; // Default
+    
+    if (business?.plan_id) {
+      // Si tiene plan_id, obtener el plan y usar su key
+      const { SubscriptionPlan } = await import('../../../database/models/SubscriptionPlan.js');
+      const plan = await SubscriptionPlan.findById(business.plan_id);
+      if (plan) {
+        planType = plan.key;
+      }
+    } else if (business?.plan_type) {
+      // Fallback a plan_type por compatibilidad
+      planType = business.plan_type;
+    }
 
     // Obtener métricas según el plan
     const stats = await DashboardStatsService.getDashboardStats(businessId, planType);

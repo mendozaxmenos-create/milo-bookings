@@ -25,7 +25,8 @@ export class Business {
       owner_phone: data.owner_phone,
       is_active: data.is_active ?? true,
       is_trial: data.is_trial ?? false,
-      plan_type: data.plan_type || 'basic',
+      plan_type: data.plan_type || 'basic', // Mantener por compatibilidad
+      plan_id: data.plan_id || null, // Nuevo campo
       trial_start_date: trialStartDate,
       trial_end_date: trialEndDate,
       created_at: now.toISOString(),

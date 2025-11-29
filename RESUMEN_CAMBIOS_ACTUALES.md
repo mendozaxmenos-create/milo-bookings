@@ -57,3 +57,5 @@
 **¿Qué resultado obtienes al ejecutar `git status`?** Eso me ayudará a saber qué hacer a continuación.
 
 
+
+

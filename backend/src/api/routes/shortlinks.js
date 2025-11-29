@@ -1,5 +1,6 @@
 import express from 'express';
 import { ClientService } from '../../services/clientService.js';
+import { ShortlinkAnalyticsService } from '../../services/shortlinkAnalyticsService.js';
 import { authenticateToken } from '../../utils/auth.js';
 import { Business } from '../../../database/models/Business.js';
 
@@ -28,15 +29,21 @@ router.get('/', async (req, res) => {
       clients = clients.filter(client => client.business_id === req.user.business_id);
     }
 
-    const shortlinks = clients.map(client => ({
-      slug: client.slug,
-      name: client.name,
-      url: `${process.env.SHORTLINK_BASE_URL || 'https://go.soymilo.com'}/${client.slug}`,
-      business_id: client.business_id,
-      created_at: client.created_at,
-      updated_at: client.updated_at,
-      usage_count: 0, // TODO: Implementar tracking de uso
-    }));
+    // Obtener usage_count para cada shortlink
+    const shortlinks = await Promise.all(
+      clients.map(async (client) => {
+        const usageCount = await ShortlinkAnalyticsService.getUsageCount(client.id);
+        return {
+          slug: client.slug,
+          name: client.name,
+          url: `${process.env.SHORTLINK_BASE_URL || 'https://go.soymilo.com'}/${client.slug}`,
+          business_id: client.business_id,
+          created_at: client.created_at,
+          updated_at: client.updated_at,
+          usage_count: usageCount,
+        };
+      })
+    );
 
     res.json({ shortlinks });
   } catch (error) {
@@ -118,6 +125,9 @@ router.post('/', async (req, res) => {
       settings: {},
     });
 
+    // Obtener usage_count (será 0 para un shortlink nuevo)
+    const usageCount = await ShortlinkAnalyticsService.getUsageCount(client.id);
+
     res.status(201).json({
       slug: client.slug,
       name: client.name,
@@ -125,7 +135,7 @@ router.post('/', async (req, res) => {
       business_id: client.business_id,
       created_at: client.created_at,
       updated_at: client.updated_at,
-      usage_count: 0,
+      usage_count: usageCount,
     });
   } catch (error) {
     console.error('[Shortlinks API] Error creating shortlink:', error);
@@ -170,6 +180,9 @@ router.put('/:slug', async (req, res) => {
 
     const updatedClient = await ClientService.update(client.id, updateData);
 
+    // Obtener usage_count actualizado
+    const usageCount = await ShortlinkAnalyticsService.getUsageCount(updatedClient.id);
+
     res.json({
       slug: updatedClient.slug,
       name: updatedClient.name,
@@ -177,7 +190,7 @@ router.put('/:slug', async (req, res) => {
       business_id: updatedClient.business_id,
       created_at: updatedClient.created_at,
       updated_at: updatedClient.updated_at,
-      usage_count: 0, // TODO: Implementar tracking de uso
+      usage_count: usageCount,
     });
   } catch (error) {
     console.error('[Shortlinks API] Error updating shortlink:', error);

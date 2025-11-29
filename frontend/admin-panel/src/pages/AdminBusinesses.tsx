@@ -9,8 +9,11 @@ import {
   updateSubscriptionPrice,
   migrateShortlinksToBusinesses,
   getShortlinks,
+  getPlans,
+  updateBusinessPlan,
   type Business,
   type CreateBusinessRequest,
+  type SubscriptionPlan,
 } from '../services/api';
 import QRCode from 'qrcode.react';
 
@@ -18,6 +21,7 @@ export function AdminBusinesses() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [showPriceModal, setShowPriceModal] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -61,6 +65,21 @@ export function AdminBusinesses() {
   const { data: priceData } = useQuery({
     queryKey: ['subscription-price'],
     queryFn: getSubscriptionPrice,
+  });
+
+  const { data: plansData } = useQuery({
+    queryKey: ['plans'],
+    queryFn: getPlans,
+  });
+
+  const updatePlanMutation = useMutation({
+    mutationFn: ({ businessId, planId }: { businessId: string; planId: string }) =>
+      updateBusinessPlan(businessId, planId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
+      setShowPlanModal(false);
+      setSelectedBusiness(null);
+    },
   });
 
   const updatePriceMutation = useMutation({
@@ -284,6 +303,9 @@ export function AdminBusinesses() {
                   <div>
                     <strong>Estado Bot:</strong> {getStatusBadge(business.bot_status)}
                   </div>
+                  <div>
+                    <strong>Plan:</strong> {business.plan_type || 'basic'}
+                  </div>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
@@ -316,6 +338,23 @@ export function AdminBusinesses() {
                   }}
                 >
                   Ver QR
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedBusiness(business);
+                    setShowPlanModal(true);
+                  }}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    backgroundColor: '#6f42c1',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  💎 Cambiar Plan
                 </button>
                 <button
                   onClick={() => handleToggleActive(business)}
@@ -369,6 +408,185 @@ export function AdminBusinesses() {
           isLoading={updatePriceMutation.isPending}
         />
       )}
+
+      {showPlanModal && selectedBusiness && (
+        <PlanSelectionModal
+          business={selectedBusiness}
+          plans={plansData?.data || []}
+          onClose={() => {
+            setShowPlanModal(false);
+            setSelectedBusiness(null);
+          }}
+          onSelect={(planId) => {
+            updatePlanMutation.mutate({ businessId: selectedBusiness.id, planId });
+          }}
+          isLoading={updatePlanMutation.isPending}
+        />
+      )}
+    </div>
+  );
+}
+
+function PlanSelectionModal({
+  business,
+  plans,
+  onClose,
+  onSelect,
+  isLoading,
+}: {
+  business: Business;
+  plans: SubscriptionPlan[];
+  onClose: () => void;
+  onSelect: (planId: string) => void;
+  isLoading: boolean;
+}) {
+  const activePlans = plans.filter(p => p.is_active);
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          backgroundColor: 'white',
+          padding: '2rem',
+          borderRadius: '8px',
+          maxWidth: '600px',
+          width: '90%',
+          maxHeight: '90vh',
+          overflow: 'auto',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 style={{ marginTop: 0 }}>Cambiar Plan de Suscripción</h2>
+        <p style={{ color: '#666', marginBottom: '1.5rem' }}>
+          Negocio: <strong>{business.name}</strong>
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {activePlans.map((plan) => (
+            <div
+              key={plan.id}
+              style={{
+                border: '2px solid #ddd',
+                borderRadius: '8px',
+                padding: '1rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#007bff';
+                e.currentTarget.style.backgroundColor = '#f0f8ff';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#ddd';
+                e.currentTarget.style.backgroundColor = 'white';
+              }}
+              onClick={() => onSelect(plan.id)}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                <div>
+                  <h3 style={{ margin: 0, marginBottom: '0.5rem' }}>
+                    {plan.name}
+                    {plan.is_default && (
+                      <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', color: '#28a745' }}>
+                        (Por Defecto)
+                      </span>
+                    )}
+                  </h3>
+                  <p style={{ margin: 0, color: '#666', fontSize: '0.875rem' }}>
+                    {plan.description || 'Sin descripción'}
+                  </p>
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <strong style={{ fontSize: '1.25rem', color: '#007bff' }}>
+                      {new Intl.NumberFormat('es-AR', {
+                        style: 'currency',
+                        currency: plan.currency || 'ARS',
+                      }).format(plan.price)}
+                    </strong>
+                    <span style={{ color: '#666', marginLeft: '0.5rem' }}>/mes</span>
+                  </div>
+                  {plan.features && plan.features.length > 0 && (
+                    <div style={{ marginTop: '0.75rem' }}>
+                      <div style={{ fontSize: '0.875rem', color: '#666', marginBottom: '0.25rem' }}>
+                        {plan.features.length} features incluidas
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                        {plan.features.slice(0, 5).map((feature) => (
+                          <span
+                            key={feature.id}
+                            style={{
+                              padding: '0.125rem 0.375rem',
+                              backgroundColor: '#e7f3ff',
+                              color: '#0066cc',
+                              borderRadius: '4px',
+                              fontSize: '0.75rem',
+                            }}
+                          >
+                            {feature.name}
+                          </span>
+                        ))}
+                        {plan.features.length > 5 && (
+                          <span style={{ fontSize: '0.75rem', color: '#666' }}>
+                            +{plan.features.length - 5} más
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect(plan.id);
+                  }}
+                  disabled={isLoading}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    backgroundColor: isLoading ? '#6c757d' : '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: isLoading ? 'not-allowed' : 'pointer',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  {isLoading ? 'Cambiando...' : 'Seleccionar'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            onClick={onClose}
+            disabled={isLoading}
+            style={{
+              padding: '0.75rem 1.5rem',
+              backgroundColor: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

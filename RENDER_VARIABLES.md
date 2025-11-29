@@ -50,6 +50,13 @@ MP_FAILURE_URL=https://tu-app.onrender.com/payments/failure
 MP_PENDING_URL=https://tu-app.onrender.com/payments/pending
 ```
 
+### 6. Shortlinks (Opcional pero recomendado)
+```
+SHORTLINK_BASE_URL=https://go.soymilo.com
+```
+
+**💡 Nota**: Si no tienes un dominio personalizado configurado, puedes usar el dominio `.vercel.app` de tu proyecto (ej: `https://tu-proyecto.vercel.app`). Una vez configures el dominio personalizado `go.soymilo.com` en Vercel, actualiza esta variable.
+
 ## 🎯 Resumen Rápido
 
 **Mínimo necesario para funcionar:**

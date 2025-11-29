@@ -10,7 +10,8 @@ export const validateBusiness = (data, isUpdate = false) => {
     owner_phone: isUpdate ? Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).optional() : Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).required(),
     is_active: Joi.boolean().optional(),
     is_trial: Joi.boolean().optional(),
-    plan_type: Joi.string().valid('basic', 'premium').optional(),
+    plan_type: Joi.string().valid('basic', 'intermediate', 'premium').optional(),
+    plan_id: Joi.string().optional(),
   });
 
   return schema.validate(data);

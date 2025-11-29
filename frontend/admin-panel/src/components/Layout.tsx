@@ -116,6 +116,35 @@ export function Layout() {
                 </li>
                 <li style={{ marginBottom: '0.5rem' }}>
                   <Link
+                    to="/admin/plans"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '6px',
+                      textDecoration: 'none',
+                      color: isActive('/admin/plans') ? '#fff' : '#adb5bd',
+                      backgroundColor: isActive('/admin/plans') ? '#495057' : 'transparent',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive('/admin/plans')) {
+                        e.currentTarget.style.backgroundColor = '#3d4248';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive('/admin/plans')) {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                  >
+                    <span style={{ fontSize: '1.2rem' }}>💎</span>
+                    <span>Planes</span>
+                  </Link>
+                </li>
+                <li style={{ marginBottom: '0.5rem' }}>
+                  <Link
                     to="/admin/shortlinks"
                     style={{
                       display: 'flex',

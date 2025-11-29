@@ -9,6 +9,7 @@
  */
 
 import { ClientService } from '../../../backend/src/services/clientService.js';
+import { ShortlinkAnalyticsService } from '../../../backend/src/services/shortlinkAnalyticsService.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -51,6 +52,22 @@ export default async function handler(req, res) {
           </body>
         </html>
       `);
+    }
+
+    // Registrar acceso en analytics (no bloqueante)
+    try {
+      const ipAddress = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.connection?.remoteAddress || null;
+      const userAgent = req.headers['user-agent'] || null;
+      const referer = req.headers['referer'] || req.headers['referrer'] || null;
+      
+      await ShortlinkAnalyticsService.trackAccess(client.id, slug, client.business_id, {
+        ipAddress: Array.isArray(ipAddress) ? ipAddress[0] : ipAddress,
+        userAgent,
+        referer,
+      });
+    } catch (analyticsError) {
+      // No fallar si hay error en analytics, solo loguear
+      console.error('[Shortlink] Error tracking analytics:', analyticsError);
     }
 
     // Obtener número de WhatsApp desde variables de entorno

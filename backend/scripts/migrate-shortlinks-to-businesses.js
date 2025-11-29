@@ -57,3 +57,5 @@ async function migrateShortlinksToBusinesses() {
 
 migrateShortlinksToBusinesses();
 
+
+

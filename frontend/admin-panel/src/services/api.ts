@@ -135,6 +135,8 @@ export interface Business {
   is_trial?: boolean;
   trial_start_date?: string;
   trial_end_date?: string;
+  plan_type?: string;
+  plan_id?: string | null;
   bot_status?: string;
   has_qr?: boolean;
   created_at: string;
@@ -327,6 +329,107 @@ export interface DashboardStatsResponse {
 
 export const getDashboardStats = async (): Promise<DashboardStatsResponse> => {
   const response = await api.get<DashboardStatsResponse>('/api/dashboard/stats');
+  return response.data;
+};
+
+// Plans and Features
+export interface Feature {
+  id: string;
+  name: string;
+  key: string;
+  description: string | null;
+  category: string | null;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  key: string;
+  description: string | null;
+  price: number;
+  currency: string;
+  display_order: number;
+  is_active: boolean;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+  features?: Feature[];
+  missingFeatures?: Feature[]; // Features disponibles que no están en el plan (solo super admin)
+}
+
+export interface PlansResponse {
+  data: SubscriptionPlan[];
+}
+
+export interface PlanResponse {
+  data: SubscriptionPlan;
+}
+
+export interface AvailableFeaturesResponse {
+  data: Feature[];
+  byCategory: Record<string, Feature[]>;
+}
+
+export const getPlans = async (): Promise<PlansResponse> => {
+  const response = await api.get<PlansResponse>('/api/plans');
+  return response.data;
+};
+
+export const getPlan = async (id: string): Promise<PlanResponse> => {
+  const response = await api.get<PlanResponse>(`/api/plans/${id}`);
+  return response.data;
+};
+
+export const createPlan = async (data: {
+  name: string;
+  key: string;
+  description?: string;
+  price?: number;
+  currency?: string;
+  display_order?: number;
+  is_active?: boolean;
+  is_default?: boolean;
+  featureIds?: string[];
+}): Promise<PlanResponse> => {
+  const response = await api.post<PlanResponse>('/api/plans', data);
+  return response.data;
+};
+
+export const updatePlan = async (id: string, data: {
+  name?: string;
+  key?: string;
+  description?: string;
+  price?: number;
+  currency?: string;
+  display_order?: number;
+  is_active?: boolean;
+  is_default?: boolean;
+  featureIds?: string[];
+}): Promise<PlanResponse> => {
+  const response = await api.put<PlanResponse>(`/api/plans/${id}`, data);
+  return response.data;
+};
+
+export const deletePlan = async (id: string): Promise<void> => {
+  await api.delete(`/api/plans/${id}`);
+};
+
+export const getAvailableFeatures = async (): Promise<AvailableFeaturesResponse> => {
+  const response = await api.get<AvailableFeaturesResponse>('/api/plans/features/available');
+  return response.data;
+};
+
+export const updateBusinessPlan = async (businessId: string, planId: string): Promise<{
+  data: {
+    business: Business;
+    plan: SubscriptionPlan;
+  };
+}> => {
+  const response = await api.patch(`/api/businesses/${businessId}/plan`, { plan_id: planId });
   return response.data;
 };
 

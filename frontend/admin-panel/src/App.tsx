@@ -6,7 +6,9 @@ import { Bookings } from './pages/Bookings';
 import { Availability } from './pages/Availability';
 import { Settings } from './pages/Settings';
 import { AdminBusinesses } from './pages/AdminBusinesses';
+import { AdminPlans } from './pages/AdminPlans';
 import { Shortlinks } from './pages/Shortlinks';
+import { MercadoPagoInstructivo } from './pages/MercadoPagoInstructivo';
 import { useAuthStore } from './store/authStore';
 import { Layout } from './components/Layout';
 
@@ -21,6 +23,10 @@ function App() {
           path="/login"
           element={isAuthenticated ? <Navigate to={isSuperAdmin ? "/admin/businesses" : "/dashboard"} replace /> : <Login />}
         />
+        <Route
+          path="/instructivo-mercadopago"
+          element={<MercadoPagoInstructivo />}
+        />
         {isSuperAdmin ? (
           <>
             <Route
@@ -28,6 +34,7 @@ function App() {
               element={isAuthenticated ? <Layout /> : <Navigate to="/login" replace />}
             >
               <Route path="businesses" element={<AdminBusinesses />} />
+              <Route path="plans" element={<AdminPlans />} />
               <Route path="shortlinks" element={<Shortlinks />} />
               <Route index element={<Navigate to="/admin/businesses" replace />} />
             </Route>

@@ -111,5 +111,60 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+/**
+ * PATCH /api/businesses/:id/plan
+ * Cambiar el plan de suscripción del negocio
+ */
+router.patch('/:id/plan', async (req, res) => {
+  try {
+    const business = await Business.findById(req.params.id);
+    
+    if (!business) {
+      return res.status(404).json({ error: 'Business not found' });
+    }
+
+    // Verificar permisos: solo el dueño del negocio o super admin
+    const isSuperAdmin = req.user.is_system_user && req.user.role === 'super_admin';
+    if (req.user.business_id !== business.id && !isSuperAdmin) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const { plan_id } = req.body;
+
+    if (!plan_id) {
+      return res.status(400).json({ error: 'Missing required field: plan_id' });
+    }
+
+    // Verificar que el plan existe y está activo
+    const { SubscriptionPlan } = await import('../../../database/models/SubscriptionPlan.js');
+    const plan = await SubscriptionPlan.findById(plan_id);
+    
+    if (!plan) {
+      return res.status(404).json({ error: 'Plan not found' });
+    }
+
+    if (!plan.is_active) {
+      return res.status(400).json({ error: 'Cannot assign inactive plan' });
+    }
+
+    // Actualizar el plan del negocio
+    await Business.update(req.params.id, { plan_id });
+
+    // Obtener el negocio actualizado con el plan
+    const updatedBusiness = await Business.findById(req.params.id);
+    const planWithFeatures = await SubscriptionPlan.findByIdWithFeatures(plan_id);
+
+    res.json({ 
+      data: {
+        business: updatedBusiness,
+        plan: planWithFeatures,
+      },
+    });
+  } catch (error) {
+    console.error('Error updating business plan:', error);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
 export default router;
 

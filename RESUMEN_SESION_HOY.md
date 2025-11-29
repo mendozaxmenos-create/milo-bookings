@@ -186,3 +186,5 @@
 **Estado general:** ✅ 95% completo - Solo falta mergear PR de shortlinks
 
 
+
+

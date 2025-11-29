@@ -263,6 +263,7 @@ router.put('/businesses/:id', async (req, res) => {
       name: req.body.name,
       phone: req.body.phone,
       plan_type: req.body.plan_type,
+      plan_id: req.body.plan_id,
     });
     
     // Validar datos primero
