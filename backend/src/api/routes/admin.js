@@ -736,5 +736,73 @@ router.post('/migrate-shortlinks-to-businesses', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/admin/check-migration
+ * Verificar estado de la migración de features y planes
+ */
+router.get('/check-migration', async (req, res) => {
+  try {
+    console.log('[Admin] Verificando estado de migración de features y planes...');
+    
+    const knex = (await import('../../../database/index.js')).default;
+    
+    // Verificar si las tablas existen
+    const hasFeaturesTable = await knex.schema.hasTable('features');
+    const hasPlansTable = await knex.schema.hasTable('subscription_plans');
+    const hasPlanFeaturesTable = await knex.schema.hasTable('plan_features');
+    
+    let featuresCount = 0;
+    let plansCount = 0;
+    let planFeaturesCount = 0;
+    
+    if (hasFeaturesTable) {
+      const result = await knex('features').count('* as count').first();
+      featuresCount = parseInt(result?.count || 0);
+    }
+    
+    if (hasPlansTable) {
+      const result = await knex('subscription_plans').count('* as count').first();
+      plansCount = parseInt(result?.count || 0);
+    }
+    
+    if (hasPlanFeaturesTable) {
+      const result = await knex('plan_features').count('* as count').first();
+      planFeaturesCount = parseInt(result?.count || 0);
+    }
+    
+    res.json({
+      tables: {
+        features: {
+          exists: hasFeaturesTable,
+          count: featuresCount,
+        },
+        subscription_plans: {
+          exists: hasPlansTable,
+          count: plansCount,
+        },
+        plan_features: {
+          exists: hasPlanFeaturesTable,
+          count: planFeaturesCount,
+        },
+      },
+      status: hasFeaturesTable && hasPlansTable && hasPlanFeaturesTable
+        ? (featuresCount > 0 && plansCount > 0 ? 'complete' : 'tables_exist_but_empty')
+        : 'migration_needed',
+      message: hasFeaturesTable && hasPlansTable && hasPlanFeaturesTable
+        ? (featuresCount > 0 && plansCount > 0 
+          ? 'Migración completa. Features y planes cargados.'
+          : 'Las tablas existen pero están vacías. La migración puede no haberse ejecutado completamente.')
+        : 'La migración 025_create_features_and_plans.js no se ha ejecutado. Ejecuta: npm run db:migrate en el directorio backend',
+    });
+  } catch (error) {
+    console.error('[Admin] Error verificando migración:', error);
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error.message,
+      stack: error.stack,
+    });
+  }
+});
+
 export default router;
 
