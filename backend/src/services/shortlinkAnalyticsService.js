@@ -295,6 +295,11 @@ export class ShortlinkAnalyticsService {
     if (!businessId) {
       // Obtener todas las métricas de negocios
       const now = new Date();
+      const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+      
+      // === MÉTRICAS DEL MES ACTUAL ===
       
       // Clientes activos (tienen plan_id, no están en trial, y están activos)
       const activeClientsQuery = db('businesses')
@@ -337,12 +342,180 @@ export class ShortlinkAnalyticsService {
       const migratedClientsResult = await migratedClientsQuery.count('* as count').first();
       const migratedClients = parseInt(migratedClientsResult?.count || 0, 10);
       
+      // === MÉTRICAS DEL MES ANTERIOR (para comparación) ===
+      
+      // Clientes activos del mes anterior (creados o actualizados antes del inicio del mes actual)
+      const previousActiveClientsQuery = db('businesses')
+        .where({ is_active: true })
+        .whereNotNull('plan_id')
+        .where({ is_trial: false })
+        .where('updated_at', '<', startOfCurrentMonth.toISOString());
+      const previousActiveClientsResult = await previousActiveClientsQuery.count('* as count').first();
+      const previousActiveClients = parseInt(previousActiveClientsResult?.count || 0, 10);
+      
+      // Clientes en trial del mes anterior
+      const previousTrialClientsQuery = db('businesses')
+        .where({ is_active: true, is_trial: true })
+        .whereNotNull('trial_end_date')
+        .where('trial_end_date', '>', endOfLastMonth.toISOString())
+        .where('trial_end_date', '<=', now.toISOString())
+        .orWhere(function() {
+          this.where({ is_active: true, is_trial: true })
+            .whereNotNull('trial_end_date')
+            .where('trial_end_date', '>', now.toISOString())
+            .where('created_at', '<', startOfCurrentMonth.toISOString());
+        });
+      const previousTrialClientsResult = await previousTrialClientsQuery.count('* as count').first();
+      const previousTrialClients = parseInt(previousTrialClientsResult?.count || 0, 10);
+      
+      // Facturación del mes anterior (negocios que ya tenían plan activo antes del inicio del mes actual)
+      const previousActiveBusinessesWithPlans = await db('businesses')
+        .join('subscription_plans', 'businesses.plan_id', 'subscription_plans.id')
+        .where({ 'businesses.is_active': true, 'businesses.is_trial': false })
+        .whereNotNull('businesses.plan_id')
+        .where('businesses.updated_at', '<', startOfCurrentMonth.toISOString())
+        .select('subscription_plans.price', 'subscription_plans.currency');
+      
+      let previousTotalRevenue = 0;
+      const previousRevenueByCurrency = {};
+      previousActiveBusinessesWithPlans.forEach(business => {
+        const price = parseFloat(business.price || 0);
+        const currency = business.currency || 'ARS';
+        previousTotalRevenue += price;
+        previousRevenueByCurrency[currency] = (previousRevenueByCurrency[currency] || 0) + price;
+      });
+      
+      // Clientes migrados del mes anterior
+      const previousMigratedClientsQuery = db('businesses')
+        .where({ is_active: true, is_trial: false })
+        .whereNotNull('plan_id')
+        .whereNotNull('trial_end_date')
+        .where('trial_end_date', '<', endOfLastMonth.toISOString());
+      const previousMigratedClientsResult = await previousMigratedClientsQuery.count('* as count').first();
+      const previousMigratedClients = parseInt(previousMigratedClientsResult?.count || 0, 10);
+      
+      // === FACTURACIÓN POR PERÍODO SELECCIONADO ===
+      
+      // Calcular facturación del período seleccionado (basado en startDate y endDate)
+      let periodRevenue = 0;
+      const periodRevenueByCurrency = {};
+      
+      if (startDate && endDate) {
+        // Negocios que estaban activos durante el período seleccionado
+        const periodActiveBusinesses = await db('businesses')
+          .join('subscription_plans', 'businesses.plan_id', 'subscription_plans.id')
+          .where({ 'businesses.is_active': true, 'businesses.is_trial': false })
+          .whereNotNull('businesses.plan_id')
+          .where('businesses.updated_at', '<=', endDate)
+          .where(function() {
+            this.where('businesses.created_at', '<=', endDate)
+              .orWhere('businesses.updated_at', '>=', startDate);
+          })
+          .select('subscription_plans.price', 'subscription_plans.currency', 'businesses.created_at', 'businesses.updated_at');
+        
+        periodActiveBusinesses.forEach(business => {
+          const price = parseFloat(business.price || 0);
+          const currency = business.currency || 'ARS';
+          periodRevenue += price;
+          periodRevenueByCurrency[currency] = (periodRevenueByCurrency[currency] || 0) + price;
+        });
+      } else {
+        // Si no hay período, usar facturación del mes actual
+        periodRevenue = totalRevenue;
+        Object.assign(periodRevenueByCurrency, revenueByCurrency);
+      }
+      
+      // === FACTURACIÓN DEL PERÍODO ANTERIOR (para comparación) ===
+      
+      let previousPeriodRevenue = 0;
+      const previousPeriodRevenueByCurrency = {};
+      
+      if (compareStartDate && compareEndDate) {
+        const previousPeriodActiveBusinesses = await db('businesses')
+          .join('subscription_plans', 'businesses.plan_id', 'subscription_plans.id')
+          .where({ 'businesses.is_active': true, 'businesses.is_trial': false })
+          .whereNotNull('businesses.plan_id')
+          .where('businesses.updated_at', '<=', compareEndDate)
+          .where(function() {
+            this.where('businesses.created_at', '<=', compareEndDate)
+              .orWhere('businesses.updated_at', '>=', compareStartDate);
+          })
+          .select('subscription_plans.price', 'subscription_plans.currency');
+        
+        previousPeriodActiveBusinesses.forEach(business => {
+          const price = parseFloat(business.price || 0);
+          const currency = business.currency || 'ARS';
+          previousPeriodRevenue += price;
+          previousPeriodRevenueByCurrency[currency] = (previousPeriodRevenueByCurrency[currency] || 0) + price;
+        });
+      } else {
+        // Si no hay período de comparación, usar facturación del mes anterior
+        previousPeriodRevenue = previousTotalRevenue;
+        Object.assign(previousPeriodRevenueByCurrency, previousRevenueByCurrency);
+      }
+      
+      // === CALCULAR CAMBIOS ===
+      
+      const calculateChange = (current, previous) => {
+        if (previous === 0) {
+          return current > 0 ? { value: 100, isPositive: true } : { value: 0, isPositive: true };
+        }
+        const change = ((current - previous) / previous) * 100;
+        return {
+          value: Math.abs(change).toFixed(1),
+          isPositive: change >= 0,
+          absolute: current - previous,
+        };
+      };
+      
+      const activeClientsChange = calculateChange(activeClients, previousActiveClients);
+      const trialClientsChange = calculateChange(trialClients, previousTrialClients);
+      const revenueMonthChange = calculateChange(totalRevenue, previousTotalRevenue);
+      const revenuePeriodChange = calculateChange(periodRevenue, previousPeriodRevenue);
+      const migratedClientsChange = calculateChange(migratedClients, previousMigratedClients);
+      
       businessMetrics = {
-        activeClients,
-        trialClients,
-        migratedClients,
-        totalRevenue,
-        revenueByCurrency,
+        activeClients: {
+          current: activeClients,
+          previous: previousActiveClients,
+          change: activeClientsChange.value,
+          isPositive: activeClientsChange.isPositive,
+          absolute: activeClientsChange.absolute,
+        },
+        trialClients: {
+          current: trialClients,
+          previous: previousTrialClients,
+          change: trialClientsChange.value,
+          isPositive: trialClientsChange.isPositive,
+          absolute: trialClientsChange.absolute,
+        },
+        migratedClients: {
+          current: migratedClients,
+          previous: previousMigratedClients,
+          change: migratedClientsChange.value,
+          isPositive: migratedClientsChange.isPositive,
+          absolute: migratedClientsChange.absolute,
+        },
+        revenue: {
+          // Facturación del mes actual
+          currentMonth: {
+            current: totalRevenue,
+            previous: previousTotalRevenue,
+            change: revenueMonthChange.value,
+            isPositive: revenueMonthChange.isPositive,
+            absolute: revenueMonthChange.absolute,
+            byCurrency: revenueByCurrency,
+          },
+          // Facturación del período seleccionado
+          currentPeriod: {
+            current: periodRevenue,
+            previous: previousPeriodRevenue,
+            change: revenuePeriodChange.value,
+            isPositive: revenuePeriodChange.isPositive,
+            absolute: revenuePeriodChange.absolute,
+            byCurrency: periodRevenueByCurrency,
+          },
+        },
       };
     }
 

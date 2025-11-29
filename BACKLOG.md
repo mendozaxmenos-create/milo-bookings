@@ -90,7 +90,9 @@
 - [ ] Exportar reportes a Excel/PDF
 
 ### Dashboard Financiero (Super Admin)
-- [ ] Dashboard financiero para super admin
+- [x] Métricas de facturación con comparación mensual (30/11/2025)
+- [x] Facturación por período seleccionado (30/11/2025)
+- [ ] Dashboard financiero completo para super admin
   - [ ] Ingresos totales por período
   - [ ] Ingresos por negocio
   - [ ] Ingresos por plan de suscripción

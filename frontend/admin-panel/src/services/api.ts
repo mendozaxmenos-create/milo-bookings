@@ -479,11 +479,45 @@ export interface ShortlinkAnalyticsDashboard {
     avgClicks: string;
   };
   business?: {
-    activeClients: number;
-    trialClients: number;
-    migratedClients: number;
-    totalRevenue: number;
-    revenueByCurrency: Record<string, number>;
+    activeClients: {
+      current: number;
+      previous: number;
+      change: string;
+      isPositive: boolean;
+      absolute: number;
+    };
+    trialClients: {
+      current: number;
+      previous: number;
+      change: string;
+      isPositive: boolean;
+      absolute: number;
+    };
+    migratedClients: {
+      current: number;
+      previous: number;
+      change: string;
+      isPositive: boolean;
+      absolute: number;
+    };
+    revenue: {
+      currentMonth: {
+        current: number;
+        previous: number;
+        change: string;
+        isPositive: boolean;
+        absolute: number;
+        byCurrency: Record<string, number>;
+      };
+      currentPeriod: {
+        current: number;
+        previous: number;
+        change: string;
+        isPositive: boolean;
+        absolute: number;
+        byCurrency: Record<string, number>;
+      };
+    };
   } | null;
   trends: {
     byDate: Array<{ date: string; count: number }>;

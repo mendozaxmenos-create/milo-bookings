@@ -155,41 +155,79 @@ export function ShortlinkAnalytics() {
       {isSuperAdmin && dashboard.business && (
         <div style={{ marginBottom: '2rem' }}>
           <h2 style={{ marginBottom: '1rem', fontSize: '1.5rem' }}>Métricas de Negocios</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
             <MetricCard
               title="Clientes Activos"
-              value={dashboard.business.activeClients.toString()}
+              value={dashboard.business.activeClients.current.toString()}
               subtitle="Con suscripción activa"
               color="#28a745"
+              change={dashboard.business.activeClients.change}
+              isPositive={dashboard.business.activeClients.isPositive}
+              previousValue={dashboard.business.activeClients.previous}
             />
             <MetricCard
               title="Clientes en Trial"
-              value={dashboard.business.trialClients.toString()}
+              value={dashboard.business.trialClients.current.toString()}
               subtitle="Período de prueba (7 días)"
               color="#ffc107"
+              change={dashboard.business.trialClients.change}
+              isPositive={dashboard.business.trialClients.isPositive}
+              previousValue={dashboard.business.trialClients.previous}
             />
             <MetricCard
               title="Clientes Migrados"
-              value={dashboard.business.migratedClients.toString()}
+              value={dashboard.business.migratedClients.current.toString()}
               subtitle="De trial a plan pago"
               color="#17a2b8"
+              change={dashboard.business.migratedClients.change}
+              isPositive={dashboard.business.migratedClients.isPositive}
+              previousValue={dashboard.business.migratedClients.previous}
             />
-            <MetricCard
-              title="Facturación Total"
-              value={new Intl.NumberFormat('es-AR', {
-                style: 'currency',
-                currency: 'ARS',
-                minimumFractionDigits: 0,
-              }).format(dashboard.business.totalRevenue)}
-              subtitle={Object.keys(dashboard.business.revenueByCurrency || {}).length > 0 
-                ? Object.entries(dashboard.business.revenueByCurrency)
-                    .map(([currency, amount]) => 
-                      `${currency}: ${new Intl.NumberFormat('es-AR', { style: 'currency', currency }).format(amount as number)}`
-                    ).join(', ')
-                : 'ARS'
-              }
-              color="#6f42c1"
-            />
+          </div>
+          
+          {/* Facturación */}
+          <div style={{ marginBottom: '1rem' }}>
+            <h3 style={{ marginBottom: '0.75rem', fontSize: '1.25rem' }}>Facturación</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+              <MetricCard
+                title="Facturación del Mes"
+                value={new Intl.NumberFormat('es-AR', {
+                  style: 'currency',
+                  currency: 'ARS',
+                  minimumFractionDigits: 0,
+                }).format(dashboard.business.revenue.currentMonth.current)}
+                subtitle={Object.keys(dashboard.business.revenue.currentMonth.byCurrency || {}).length > 0 
+                  ? Object.entries(dashboard.business.revenue.currentMonth.byCurrency)
+                      .map(([currency, amount]) => 
+                        `${currency}: ${new Intl.NumberFormat('es-AR', { style: 'currency', currency }).format(amount as number)}`
+                      ).join(', ')
+                  : 'ARS'
+                }
+                color="#6f42c1"
+                change={dashboard.business.revenue.currentMonth.change}
+                isPositive={dashboard.business.revenue.currentMonth.isPositive}
+                previousValue={dashboard.business.revenue.currentMonth.previous}
+              />
+              <MetricCard
+                title="Facturación del Período"
+                value={new Intl.NumberFormat('es-AR', {
+                  style: 'currency',
+                  currency: 'ARS',
+                  minimumFractionDigits: 0,
+                }).format(dashboard.business.revenue.currentPeriod.current)}
+                subtitle={Object.keys(dashboard.business.revenue.currentPeriod.byCurrency || {}).length > 0 
+                  ? Object.entries(dashboard.business.revenue.currentPeriod.byCurrency)
+                      .map(([currency, amount]) => 
+                        `${currency}: ${new Intl.NumberFormat('es-AR', { style: 'currency', currency }).format(amount as number)}`
+                      ).join(', ')
+                  : 'ARS'
+                }
+                color="#6f42c1"
+                change={dashboard.business.revenue.currentPeriod.change}
+                isPositive={dashboard.business.revenue.currentPeriod.isPositive}
+                previousValue={dashboard.business.revenue.currentPeriod.previous}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -279,6 +317,7 @@ function MetricCard({
   previousValue,
   subtitle,
   color,
+  isPositive,
 }: {
   title: string;
   value: string;
@@ -286,9 +325,10 @@ function MetricCard({
   previousValue?: number;
   subtitle?: string;
   color: string;
+  isPositive?: boolean;
 }) {
   const changeNum = change ? parseFloat(change) : 0;
-  const isPositive = changeNum >= 0;
+  const isPositiveValue = isPositive !== undefined ? isPositive : changeNum >= 0;
 
   return (
     <div style={{
@@ -308,13 +348,18 @@ function MetricCard({
       {change && previousValue !== undefined && (
         <div style={{
           fontSize: '0.875rem',
-          color: isPositive ? '#28a745' : '#dc3545',
+          color: isPositiveValue ? '#28a745' : '#dc3545',
           marginTop: '0.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.25rem',
         }}>
-          {isPositive ? '↑' : '↓'} {Math.abs(changeNum).toFixed(1)}% vs período anterior
+          <span>{isPositiveValue ? '↑' : '↓'}</span>
+          <span>{change}%</span>
+          <span style={{ color: '#666' }}>vs mes anterior</span>
           {previousValue > 0 && (
-            <span style={{ color: '#666', marginLeft: '0.5rem' }}>
-              ({previousValue.toLocaleString()} clics)
+            <span style={{ color: '#666', marginLeft: '0.25rem' }}>
+              ({previousValue.toLocaleString()})
             </span>
           )}
         </div>
