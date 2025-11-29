@@ -147,6 +147,29 @@
 - [ ] Integración con redes sociales (publicar disponibilidad)
 - [ ] API pública para integraciones de terceros
 
+### Guía de Prestadores / Directorio de Negocios
+- [ ] Crear guía de prestadores en la web de soymilo.com
+  - [ ] Página de directorio de negocios
+  - [ ] Búsqueda por ubicación (ciudad, barrio, provincia)
+  - [ ] Búsqueda por rubro/categoría
+  - [ ] Filtros avanzados (plan, rating, etc.)
+  - [ ] Perfil público de cada negocio
+  - [ ] Información de contacto y horarios
+  - [ ] Link directo al shortlink del negocio
+  - [ ] Mapa interactivo con ubicaciones
+  - [ ] Sistema de reseñas/valoraciones (futuro)
+- [ ] Integración de guía de prestadores en el bot de WhatsApp
+  - [ ] Comando para buscar prestadores
+  - [ ] Búsqueda por ubicación desde el bot
+  - [ ] Búsqueda por rubro desde el bot
+  - [ ] Envío de resultados con links a shortlinks
+  - [ ] Integración con flujo de reservas existente
+- [ ] Panel de administración para prestadores
+  - [ ] Opción para aparecer/no aparecer en el directorio
+  - [ ] Edición de información pública (descripción, categorías, ubicación)
+  - [ ] Estadísticas de visualizaciones en el directorio
+  - [ ] Gestión de horarios públicos
+
 ### Redes Sociales
 - [ ] Crear y configurar cuenta de Instagram para Milo Bookings
   - [ ] Perfil de Instagram
@@ -158,6 +181,15 @@
   - [ ] Estrategia de contenido
   - [ ] Publicaciones regulares
   - [ ] Engagement con la comunidad
+- [ ] Diseñar posts con frases relacionadas a funciones y situaciones que soluciona Milo Bookings
+  - [ ] Posts sobre gestión de reservas
+  - [ ] Posts sobre automatización de WhatsApp
+  - [ ] Posts sobre integración de pagos
+  - [ ] Posts sobre ahorro de tiempo
+  - [ ] Posts sobre crecimiento del negocio
+  - [ ] Posts sobre casos de uso reales
+  - [ ] Posts sobre beneficios para diferentes rubros
+  - [ ] Crear biblioteca de contenido para Twitter/X
 - [ ] Integración de redes sociales en el sitio web
   - [ ] Widgets de redes sociales
   - [ ] Enlaces a perfiles sociales
@@ -205,9 +237,9 @@
 | **TOTAL** | **34** | **31** | **65** |
 
 ### Progreso General
-- **Completado:** 34/65 (52%)
-- **En Progreso:** 0/65 (0%)
-- **Pendiente:** 31/65 (48%)
+- **Completado:** 34/67 (51%)
+- **En Progreso:** 0/67 (0%)
+- **Pendiente:** 33/67 (49%)
 
 **Nota:** El MVP está 100% completo. Los pendientes son mejoras y features adicionales.
 
