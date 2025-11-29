@@ -109,6 +109,10 @@
 - **QR de Shortlinks** - Ver QR de shortlinks desde el panel de negocios
 - **Migración de Datos** - Herramientas para migrar shortlinks a negocios
 - **Dashboard Mejorado** - Muestra 0 en lugar de errores cuando no hay datos
+- **Analytics de Shortlinks** - Dashboard completo con métricas, gráficos y estadísticas
+- **Gestión de Planes** - Crear y configurar planes de suscripción con features
+- **Métricas de Negocios** - Clientes activos, en trial, migrados, facturación con comparación mensual
+- **Facturación Detallada** - Facturación por mes y por período con indicadores de crecimiento
 
 #### 💾 Backup Automático (Super Admin)
 - **Backups Diarios** - Automáticos en producción
@@ -443,6 +447,22 @@ VITE_PORT=3001
 - `PUT /api/shortlinks/:slug` - Actualizar shortlink
 - `DELETE /api/shortlinks/:slug` - Eliminar shortlink (soft delete)
 
+### Analytics de Shortlinks
+- `GET /api/shortlink-analytics/dashboard` - Dashboard completo de analytics
+- `GET /api/shortlink-analytics/:slug` - Detalles de un shortlink específico
+
+### Planes y Features (Super Admin)
+- `GET /api/plans` - Listar planes de suscripción
+- `POST /api/plans` - Crear plan
+- `GET /api/plans/:id` - Obtener plan específico
+- `PUT /api/plans/:id` - Actualizar plan
+- `DELETE /api/plans/:id` - Eliminar plan
+- `GET /api/plans/features/available` - Listar features disponibles
+- `PUT /api/plans/:planId/features` - Actualizar features de un plan
+
+### Dashboard (Super Admin)
+- `GET /api/dashboard/stats` - Estadísticas del dashboard con métricas según plan
+
 ### Admin (Super Admin Only)
 - `GET /api/admin/businesses` - Listar todos los negocios
 - `POST /api/admin/businesses` - Crear negocio
@@ -678,8 +698,8 @@ El bot guía al cliente paso a paso:
 
 ---
 
-**Última actualización:** Noviembre 2025  
-**Versión:** 1.1.0  
+**Última actualización:** 30 de Noviembre 2025  
+**Versión:** 1.2.0  
 **Estado:** ✅ MVP Completo - Listo para Producción  
 **Nuevas Features (Nov 2025):**
 - Sistema de Shortlinks con búsqueda y filtrado
@@ -687,7 +707,11 @@ El bot guía al cliente paso a paso:
 - Instructivo completo de configuración de MercadoPago
 - Panel de Super Admin con vista de negocios
 - Dashboard mejorado (muestra 0 en lugar de errores)
-- Mejoras de UI/UX en toda la aplicación
+- Dashboard completo de analytics de shortlinks
+- Sistema de planes y features dinámicos
+- Métricas de negocios con comparación mensual (clientes activos, trial, facturación)
+- Facturación por mes y por período con indicadores de crecimiento
+- Sistema de tickets/soporte al cliente (en desarrollo)
 
 ---
 

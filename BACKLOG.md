@@ -46,6 +46,10 @@
 - [x] Dashboard completo de analytics de shortlinks (29/11/2025)
 - [x] Sistema de planes y features dinámicos (29/11/2025)
 - [x] Botón para eliminar permanentemente comercios (29/11/2025)
+- [x] Métricas de negocios en analytics (clientes activos, trial, facturación) (29/11/2025)
+- [x] Comparación mensual y por período con indicadores de crecimiento (30/11/2025)
+- [x] Facturación por mes y por período con comparación (30/11/2025)
+- [x] Migración inicial de sistema de tickets/soporte (30/11/2025)
 
 ### Correcciones
 - [x] Rutas API corregidas (prefijo `/api` en todas las rutas)
