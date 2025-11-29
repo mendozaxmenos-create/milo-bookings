@@ -51,6 +51,63 @@ router.get('/', async (req, res) => {
 });
 
 /**
+ * GET /api/plans/features/available
+ * Obtener todas las features disponibles (para super admin)
+ * IMPORTANTE: Esta ruta debe estar ANTES de /:id para que no sea capturada por el parámetro dinámico
+ */
+router.get('/features/available', async (req, res) => {
+  try {
+    const isSuperAdmin = req.user.is_system_user && req.user.role === 'super_admin';
+    
+    if (!isSuperAdmin) {
+      return res.status(403).json({ error: 'Forbidden: Only super admins can view all features' });
+    }
+
+    apiLogger.debug('GET /plans/features/available', {
+      userId: req.user.user_id,
+      role: req.user.role,
+    });
+
+    const features = await Feature.getAvailableFeatures();
+    
+    apiLogger.info('Available features retrieved', {
+      count: features.length,
+    });
+
+    // Agrupar por categoría
+    const featuresByCategory = {};
+    features.forEach(feature => {
+      const category = feature.category || 'other';
+      if (!featuresByCategory[category]) {
+        featuresByCategory[category] = [];
+      }
+      featuresByCategory[category].push(feature);
+    });
+
+    res.json({ 
+      data: features,
+      byCategory: featuresByCategory,
+    });
+  } catch (error) {
+    apiLogger.error('Error getting available features', {
+      error: error.message,
+      stack: error.stack,
+    });
+    
+    // Si el error es que la tabla no existe, dar un mensaje más claro
+    if (error.message.includes('does not exist') || error.message.includes('relation') || error.message.includes('no such table')) {
+      return res.status(500).json({ 
+        error: 'Database migration required', 
+        message: 'The features table does not exist. Please run database migrations.',
+        details: error.message,
+      });
+    }
+    
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
+/**
  * GET /api/plans/:id
  * Obtener un plan específico con sus features
  */
@@ -222,61 +279,6 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-/**
- * GET /api/plans/features/available
- * Obtener todas las features disponibles (para super admin)
- */
-router.get('/features/available', async (req, res) => {
-  try {
-    const isSuperAdmin = req.user.is_system_user && req.user.role === 'super_admin';
-    
-    if (!isSuperAdmin) {
-      return res.status(403).json({ error: 'Forbidden: Only super admins can view all features' });
-    }
-
-    apiLogger.debug('GET /plans/features/available', {
-      userId: req.user.user_id,
-      role: req.user.role,
-    });
-
-    const features = await Feature.getAvailableFeatures();
-    
-    apiLogger.info('Available features retrieved', {
-      count: features.length,
-    });
-
-    // Agrupar por categoría
-    const featuresByCategory = {};
-    features.forEach(feature => {
-      const category = feature.category || 'other';
-      if (!featuresByCategory[category]) {
-        featuresByCategory[category] = [];
-      }
-      featuresByCategory[category].push(feature);
-    });
-
-    res.json({ 
-      data: features,
-      byCategory: featuresByCategory,
-    });
-  } catch (error) {
-    apiLogger.error('Error getting available features', {
-      error: error.message,
-      stack: error.stack,
-    });
-    
-    // Si el error es que la tabla no existe, dar un mensaje más claro
-    if (error.message.includes('does not exist') || error.message.includes('relation') || error.message.includes('no such table')) {
-      return res.status(500).json({ 
-        error: 'Database migration required', 
-        message: 'The features table does not exist. Please run database migrations.',
-        details: error.message,
-      });
-    }
-    
-    res.status(500).json({ error: 'Internal server error', message: error.message });
-  }
-});
 
 export default router;
 
