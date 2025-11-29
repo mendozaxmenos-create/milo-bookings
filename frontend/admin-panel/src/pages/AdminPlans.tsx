@@ -340,6 +340,7 @@ function PlanCard({
   onEdit: (plan: SubscriptionPlan) => void;
   onDelete: (plan: SubscriptionPlan) => void;
 }) {
+  const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
   const planFeatureIds = plan.features?.map(f => f.id) || [];
   const missingFeatures = plan.missingFeatures || [];
 
@@ -411,12 +412,23 @@ function PlanCard({
             {plan.features.map((feature) => (
               <span
                 key={feature.id}
+                onClick={() => setSelectedFeature(feature)}
                 style={{
                   padding: '0.25rem 0.5rem',
                   backgroundColor: '#d4edda',
                   color: '#155724',
                   borderRadius: '4px',
                   fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#c3e6cb';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#d4edda';
+                  e.currentTarget.style.transform = 'scale(1)';
                 }}
               >
                 {feature.name}
@@ -438,17 +450,139 @@ function PlanCard({
             {missingFeatures.map((feature) => (
               <span
                 key={feature.id}
+                onClick={() => setSelectedFeature(feature)}
                 style={{
                   padding: '0.25rem 0.5rem',
                   backgroundColor: '#ffeaa7',
                   color: '#856404',
                   borderRadius: '4px',
                   fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#fdcb6e';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ffeaa7';
+                  e.currentTarget.style.transform = 'scale(1)';
                 }}
               >
                 {feature.name}
               </span>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Feature */}
+      {selectedFeature && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setSelectedFeature(null)}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              padding: '2rem',
+              borderRadius: '8px',
+              maxWidth: '500px',
+              width: '90%',
+              maxHeight: '90vh',
+              overflow: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0 }}>{selectedFeature.name}</h2>
+              <button
+                onClick={() => setSelectedFeature(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: '#666',
+                  padding: '0',
+                  lineHeight: '1',
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {selectedFeature.category && (
+              <div style={{ marginBottom: '1rem' }}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    padding: '0.25rem 0.75rem',
+                    backgroundColor: '#e7f3ff',
+                    color: '#0066cc',
+                    borderRadius: '4px',
+                    fontSize: '0.875rem',
+                    fontWeight: '500',
+                  }}
+                >
+                  {selectedFeature.category}
+                </span>
+              </div>
+            )}
+
+            {selectedFeature.description ? (
+              <div style={{ marginBottom: '1rem' }}>
+                <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: '#333' }}>Descripción</h3>
+                <p style={{ color: '#666', lineHeight: '1.6', margin: 0 }}>
+                  {selectedFeature.description}
+                </p>
+              </div>
+            ) : (
+              <div style={{ marginBottom: '1rem', color: '#999', fontStyle: 'italic' }}>
+                No hay descripción disponible para esta feature.
+              </div>
+            )}
+
+            <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #eee' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.875rem' }}>
+                <div>
+                  <strong>Clave:</strong> <code style={{ backgroundColor: '#f5f5f5', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>{selectedFeature.key}</code>
+                </div>
+                <div>
+                  <strong>Estado:</strong>{' '}
+                  <span style={{ color: selectedFeature.is_active ? '#28a745' : '#dc3545' }}>
+                    {selectedFeature.is_active ? '✅ Activa' : '❌ Inactiva'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setSelectedFeature(null)}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}
