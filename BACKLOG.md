@@ -133,6 +133,22 @@
 - [ ] Integración con redes sociales (publicar disponibilidad)
 - [ ] API pública para integraciones de terceros
 
+### Redes Sociales
+- [ ] Crear y configurar cuenta de Instagram para Milo Bookings
+  - [ ] Perfil de Instagram
+  - [ ] Estrategia de contenido
+  - [ ] Publicaciones regulares
+  - [ ] Historias y reels
+- [ ] Crear y configurar cuenta de Twitter/X para Milo Bookings
+  - [ ] Perfil de Twitter/X
+  - [ ] Estrategia de contenido
+  - [ ] Publicaciones regulares
+  - [ ] Engagement con la comunidad
+- [ ] Integración de redes sociales en el sitio web
+  - [ ] Widgets de redes sociales
+  - [ ] Enlaces a perfiles sociales
+  - [ ] Feed de Instagram/Twitter en el sitio
+
 ### Mejoras Técnicas
 - [ ] Tests automatizados (unitarios e integración)
 - [ ] CI/CD completo con GitHub Actions
@@ -170,13 +186,14 @@
 | Multi-idioma | 0 | 3 | 3 |
 | Features Avanzadas | 0 | 5 | 5 |
 | Integraciones | 0 | 4 | 4 |
+| Redes Sociales | 0 | 3 | 3 |
 | Mejoras Técnicas | 0 | 4 | 4 |
-| **TOTAL** | **34** | **28** | **62** |
+| **TOTAL** | **34** | **31** | **65** |
 
 ### Progreso General
-- **Completado:** 34/62 (55%)
-- **En Progreso:** 0/62 (0%)
-- **Pendiente:** 28/62 (45%)
+- **Completado:** 34/65 (52%)
+- **En Progreso:** 0/65 (0%)
+- **Pendiente:** 31/65 (48%)
 
 **Nota:** El MVP está 100% completo. Los pendientes son mejoras y features adicionales.
 
