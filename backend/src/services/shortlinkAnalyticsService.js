@@ -136,7 +136,10 @@ export class ShortlinkAnalyticsService {
     // Query de comparación (período anterior)
     let compareQuery = null;
     if (compareStartDate && compareEndDate) {
-      compareQuery = db('shortlink_analytics').where({ business_id: businessId });
+      compareQuery = db('shortlink_analytics');
+      if (businessId) {
+        compareQuery = compareQuery.where({ business_id: businessId });
+      }
       compareQuery = compareQuery.where('accessed_at', '>=', compareStartDate);
       compareQuery = compareQuery.where('accessed_at', '<=', compareEndDate);
     }
