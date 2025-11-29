@@ -122,6 +122,24 @@
 - [ ] Notas y tags por cliente
 - [ ] Segmentación de clientes
 
+### Sistema de Tickets / Soporte al Cliente
+- [ ] Sistema de tickets para consultas sobre Milo Bookings
+  - [ ] Base de datos de tickets (abiertos, en progreso, cerrados)
+  - [ ] Integración con WhatsApp para recibir consultas
+  - [ ] Dashboard de tickets para super admin
+  - [ ] Contador de tickets abiertos, cerrados, en progreso
+  - [ ] Asignación de tickets a usuarios del sistema
+  - [ ] Respuestas desde el dashboard (sin usar celular)
+  - [ ] Historial de conversaciones por ticket
+  - [ ] Estados de tickets (nuevo, abierto, en progreso, resuelto, cerrado)
+  - [ ] Prioridad de tickets (baja, media, alta, urgente)
+  - [ ] Notificaciones de nuevos tickets
+  - [ ] Búsqueda y filtrado de tickets
+  - [ ] Etiquetas/categorías de tickets
+  - [ ] Respuestas automáticas (opcional)
+  - [ ] Métricas de tiempo de respuesta
+  - [ ] Métricas de resolución de tickets
+
 ### Notificaciones
 - [ ] Notificaciones push en navegador (Plan Premium)
 - [ ] Notificaciones por email
@@ -230,6 +248,7 @@
 | Analytics | 1 | 3 | 4 |
 | Dashboard Financiero | 0 | 1 | 1 |
 | CRM | 0 | 4 | 4 |
+| Sistema de Tickets | 0 | 1 | 1 |
 | Notificaciones | 0 | 3 | 3 |
 | Multi-idioma | 0 | 3 | 3 |
 | Features Avanzadas | 0 | 5 | 5 |
@@ -237,12 +256,12 @@
 | Redes Sociales | 0 | 4 | 4 |
 | Guía de Prestadores | 0 | 2 | 2 |
 | Mejoras Técnicas | 0 | 4 | 4 |
-| **TOTAL** | **34** | **33** | **67** |
+| **TOTAL** | **34** | **34** | **68** |
 
 ### Progreso General
-- **Completado:** 34/67 (51%)
-- **En Progreso:** 0/67 (0%)
-- **Pendiente:** 33/67 (49%)
+- **Completado:** 34/68 (50%)
+- **En Progreso:** 0/68 (0%)
+- **Pendiente:** 34/68 (50%)
 
 **Nota:** El MVP está 100% completo. Los pendientes son mejoras y features adicionales.
 
