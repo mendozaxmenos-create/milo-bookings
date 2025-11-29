@@ -433,3 +433,27 @@ export const updateBusinessPlan = async (businessId: string, planId: string): Pr
   return response.data;
 };
 
+export interface MigrationStatus {
+  tables: {
+    features: {
+      exists: boolean;
+      count: number;
+    };
+    subscription_plans: {
+      exists: boolean;
+      count: number;
+    };
+    plan_features: {
+      exists: boolean;
+      count: number;
+    };
+  };
+  status: 'complete' | 'tables_exist_but_empty' | 'migration_needed';
+  message: string;
+}
+
+export const checkMigrationStatus = async (): Promise<MigrationStatus> => {
+  const response = await api.get<MigrationStatus>('/api/admin/check-migration');
+  return response.data;
+};
+

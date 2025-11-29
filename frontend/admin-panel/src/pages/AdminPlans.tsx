@@ -6,6 +6,7 @@ import {
   updatePlan,
   deletePlan,
   getAvailableFeatures,
+  checkMigrationStatus,
   type SubscriptionPlan,
   type Feature,
 } from '../services/api';
@@ -27,12 +28,21 @@ export function AdminPlans() {
     retry: 2,
   });
 
+  const { data: migrationStatus } = useQuery({
+    queryKey: ['migration-status'],
+    queryFn: checkMigrationStatus,
+    retry: 1,
+  });
+
   // Debug: Log para ver qué está pasando
   if (featuresError) {
     console.error('[AdminPlans] Error loading features:', featuresError);
   }
   if (featuresData) {
     console.log('[AdminPlans] Features data:', featuresData);
+  }
+  if (migrationStatus) {
+    console.log('[AdminPlans] Migration status:', migrationStatus);
   }
 
   const plans = plansData?.data || [];
@@ -86,28 +96,11 @@ export function AdminPlans() {
     return <div style={{ padding: '2rem' }}>Cargando planes y features...</div>;
   }
 
-  // Mostrar error si hay problema cargando features
-  if (featuresError) {
-    return (
-      <div style={{ padding: '2rem' }}>
-        <div style={{
-          backgroundColor: '#f8d7da',
-          color: '#721c24',
-          padding: '1rem',
-          borderRadius: '4px',
-          marginBottom: '1rem',
-        }}>
-          <strong>Error al cargar features:</strong>
-          <pre style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
-            {featuresError instanceof Error ? featuresError.message : JSON.stringify(featuresError)}
-          </pre>
-          <p style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
-            Verifica que la migración de base de datos se haya ejecutado correctamente.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Mostrar información de migración si está disponible
+  const showMigrationWarning = migrationStatus && (
+    migrationStatus.status === 'migration_needed' || 
+    migrationStatus.status === 'tables_exist_but_empty'
+  );
 
   // Calcular estadísticas de features
   const totalFeatures = allFeatures.length;
@@ -240,6 +233,62 @@ export function AdminPlans() {
           </div>
         </div>
       </div>
+
+      {/* Advertencia de Migración */}
+      {showMigrationWarning && (
+        <div style={{
+          backgroundColor: '#fff3cd',
+          border: '1px solid #ffc107',
+          color: '#856404',
+          padding: '1rem',
+          borderRadius: '8px',
+          marginBottom: '2rem',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'start', gap: '1rem' }}>
+            <span style={{ fontSize: '1.5rem' }}>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <strong style={{ display: 'block', marginBottom: '0.5rem' }}>
+                {migrationStatus.status === 'migration_needed' 
+                  ? 'Migración de Base de Datos Requerida'
+                  : 'Las Tablas Existen Pero Están Vacías'}
+              </strong>
+              <p style={{ margin: 0, fontSize: '0.9rem' }}>
+                {migrationStatus.message}
+              </p>
+              {migrationStatus.tables && (
+                <div style={{ marginTop: '0.75rem', fontSize: '0.85rem' }}>
+                  <strong>Estado de las tablas:</strong>
+                  <ul style={{ margin: '0.5rem 0 0 1.5rem', padding: 0 }}>
+                    <li>Features: {migrationStatus.tables.features.exists ? `✅ Existe (${migrationStatus.tables.features.count} registros)` : '❌ No existe'}</li>
+                    <li>Planes: {migrationStatus.tables.subscription_plans.exists ? `✅ Existe (${migrationStatus.tables.subscription_plans.count} registros)` : '❌ No existe'}</li>
+                    <li>Plan Features: {migrationStatus.tables.plan_features.exists ? `✅ Existe (${migrationStatus.tables.plan_features.count} registros)` : '❌ No existe'}</li>
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error al cargar features */}
+      {featuresError && (
+        <div style={{
+          backgroundColor: '#f8d7da',
+          border: '1px solid #dc3545',
+          color: '#721c24',
+          padding: '1rem',
+          borderRadius: '8px',
+          marginBottom: '2rem',
+        }}>
+          <strong>Error al cargar features:</strong>
+          <pre style={{ marginTop: '0.5rem', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>
+            {featuresError instanceof Error ? featuresError.message : JSON.stringify(featuresError, null, 2)}
+          </pre>
+          <p style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
+            Verifica que la migración de base de datos se haya ejecutado correctamente en Render.
+          </p>
+        </div>
+      )}
 
       {/* Lista de Planes */}
       <div style={{ display: 'grid', gap: '1.5rem' }}>
