@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { getDashboardStats, getShortlinks, type DashboardStats } from '../services/api';
+import { getDashboardStats, type DashboardStats } from '../services/api';
 import api from '../services/api';
 
 type BookingSummary = {
@@ -32,7 +32,7 @@ export function Dashboard() {
   });
 
   // Obtener reservas recientes (para la lista)
-  const { data: bookings, isLoading: bookingsLoading } = useQuery<{ data: BookingSummary[] }>({
+  const { data: bookings } = useQuery<{ data: BookingSummary[] }>({
     queryKey: ['bookings'],
     queryFn: async () => {
       try {
@@ -95,7 +95,7 @@ export function Dashboard() {
           </div>
           <div style={{ color: '#666', marginTop: '0.5rem' }}>Total Reservas</div>
           <div style={{ fontSize: '0.875rem', color: '#ffc107', marginTop: '0.5rem' }}>
-            {stats?.bookings?.pending + stats?.bookings?.pending_payment || 0} pendientes
+            {(stats?.bookings?.pending || 0) + (stats?.bookings?.pending_payment || 0)} pendientes
           </div>
         </div>
 
