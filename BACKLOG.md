@@ -1,6 +1,6 @@
 # 📋 Backlog de Milo Bookings
 
-**Última actualización:** 29 de Noviembre 2025
+**Última actualización:** 30 de Noviembre 2025
 
 ---
 
@@ -232,9 +232,10 @@
 | Multi-idioma | 0 | 3 | 3 |
 | Features Avanzadas | 0 | 5 | 5 |
 | Integraciones | 0 | 4 | 4 |
-| Redes Sociales | 0 | 3 | 3 |
+| Redes Sociales | 0 | 4 | 4 |
+| Guía de Prestadores | 0 | 2 | 2 |
 | Mejoras Técnicas | 0 | 4 | 4 |
-| **TOTAL** | **34** | **31** | **65** |
+| **TOTAL** | **34** | **33** | **67** |
 
 ### Progreso General
 - **Completado:** 34/67 (51%)
