@@ -52,31 +52,35 @@ export function ShortlinkAnalytics() {
       startDate: dateRange.startDate,
       endDate: dateRange.endDate,
     }),
+    retry: false,
   });
 
-  const dashboard = data?.data;
+  // Si hay error o no hay datos, usar datos vacíos (mostrar 0)
+  const dashboard = data?.data || {
+    summary: {
+      total: 0,
+      previousTotal: 0,
+      totalChange: '0.0',
+      activeCount: 0,
+      totalShortlinks: 0,
+      avgClicks: '0.0',
+    },
+    trends: { byDate: [] },
+    topShortlinks: [],
+    distribution: { byHour: [], byDayOfWeek: [] },
+    devices: { devices: [], browsers: [] },
+    referers: [],
+    recentAccesses: [],
+    shortlinks: [],
+  };
 
   if (isLoading) {
     return <div style={{ padding: '2rem' }}>Cargando estadísticas...</div>;
   }
 
+  // Si hay error, solo loguearlo pero mostrar datos vacíos (0)
   if (error) {
-    return (
-      <div style={{ padding: '2rem' }}>
-        <div style={{
-          backgroundColor: '#f8d7da',
-          color: '#721c24',
-          padding: '1rem',
-          borderRadius: '4px',
-        }}>
-          Error al cargar estadísticas: {error instanceof Error ? error.message : 'Error desconocido'}
-        </div>
-      </div>
-    );
-  }
-
-  if (!dashboard) {
-    return <div style={{ padding: '2rem' }}>No hay datos disponibles</div>;
+    console.warn('[ShortlinkAnalytics] Error loading stats, showing defaults:', error);
   }
 
   return (

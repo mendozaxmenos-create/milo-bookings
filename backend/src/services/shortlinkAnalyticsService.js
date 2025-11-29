@@ -125,8 +125,11 @@ export class ShortlinkAnalyticsService {
   static async getDashboardStats(businessId, options = {}) {
     const { startDate, endDate, compareStartDate, compareEndDate } = options;
     
-    // Query base
-    let baseQuery = db('shortlink_analytics').where({ business_id: businessId });
+    // Query base - si businessId es null, no filtrar por business_id
+    let baseQuery = db('shortlink_analytics');
+    if (businessId) {
+      baseQuery = baseQuery.where({ business_id: businessId });
+    }
     if (startDate) baseQuery = baseQuery.where('accessed_at', '>=', startDate);
     if (endDate) baseQuery = baseQuery.where('accessed_at', '<=', endDate);
 
@@ -159,9 +162,11 @@ export class ShortlinkAnalyticsService {
     const activeCount = activeSlugs.length;
 
     // 3. Promedio de clics por shortlink
-    const allSlugs = await db('clients')
-      .where({ business_id: businessId, status: 'active' })
-      .select('slug');
+    let allSlugsQuery = db('clients').where({ status: 'active' });
+    if (businessId) {
+      allSlugsQuery = allSlugsQuery.where({ business_id: businessId });
+    }
+    const allSlugs = await allSlugsQuery.select('slug');
     const totalShortlinks = allSlugs.length;
     const avgClicks = totalShortlinks > 0 ? (total / totalShortlinks) : 0;
 

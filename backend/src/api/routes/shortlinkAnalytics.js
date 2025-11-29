@@ -14,10 +14,24 @@ router.use(authenticateToken);
  */
 router.get('/dashboard', async (req, res) => {
   try {
-    const businessId = req.user.business_id;
+    // Permitir super admins ver analytics de todos los negocios o de uno específico
+    const isSuperAdmin = req.user.is_system_user && req.user.role === 'super_admin';
+    let businessId = req.user.business_id;
     
-    if (!businessId) {
+    // Si es super admin y hay un business_id en query params, usar ese
+    if (isSuperAdmin && req.query.businessId) {
+      businessId = req.query.businessId;
+    }
+    
+    if (!businessId && !isSuperAdmin) {
       return res.status(403).json({ error: 'Business ID required' });
+    }
+    
+    // Si es super admin sin businessId, retornar datos vacíos o de todos los negocios
+    if (isSuperAdmin && !businessId) {
+      // Por ahora, retornar datos vacíos para super admin sin business específico
+      // En el futuro se puede agregar lógica para agregar todos los negocios
+      businessId = null;
     }
 
     // Parsear parámetros de fecha
@@ -62,6 +76,29 @@ router.get('/dashboard', async (req, res) => {
       startDate: finalStartDate,
       endDate: finalEndDate,
     });
+
+    // Si no hay businessId (super admin sin negocio específico), retornar datos vacíos
+    if (!businessId) {
+      return res.json({ 
+        data: {
+          summary: {
+            total: 0,
+            previousTotal: 0,
+            totalChange: '0.0',
+            activeCount: 0,
+            totalShortlinks: 0,
+            avgClicks: '0.0',
+          },
+          trends: { byDate: [] },
+          topShortlinks: [],
+          distribution: { byHour: [], byDayOfWeek: [] },
+          devices: { devices: [], browsers: [] },
+          referers: [],
+          recentAccesses: [],
+          shortlinks: [],
+        }
+      });
+    }
 
     const stats = await ShortlinkAnalyticsService.getDashboardStats(businessId, {
       startDate: finalStartDate,
