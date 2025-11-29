@@ -1,13 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { getDashboardStats, getShortlinks, type DashboardStats } from '../services/api';
 import api from '../services/api';
-
-type ServiceSummary = {
-  id: string;
-  is_active: boolean;
-};
-
-type BookingStatus = 'pending' | 'pending_payment' | 'confirmed' | 'cancelled' | 'completed';
 
 type BookingSummary = {
   id: string;
@@ -16,86 +10,59 @@ type BookingSummary = {
   customer_phone: string;
   booking_date: string;
   booking_time: string;
-  status: BookingStatus;
+  status: string;
+};
+
+// Función auxiliar para formatear moneda
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
 };
 
 export function Dashboard() {
-  const { data: services, isLoading: servicesLoading, error: servicesError } = useQuery<{ data: ServiceSummary[] }>({
-    queryKey: ['services'],
-    queryFn: async () => {
-      console.log('[Dashboard] Fetching services...');
-      try {
-        const response = await api.get('/api/services');
-        console.log('[Dashboard] Services response:', {
-          data: response.data,
-          count: response.data?.data?.length || 0,
-        });
-        return response.data;
-      } catch (error) {
-        console.error('[Dashboard] Error fetching services:', error);
-        // Retornar datos vacíos en lugar de lanzar error
-        return { data: [] };
-      }
-    },
-    retry: false, // No reintentar automáticamente
+  // Obtener estadísticas del dashboard
+  const { data: dashboardData, isLoading: statsLoading, error: statsError } = useQuery<{ data: DashboardStats }>({
+    queryKey: ['dashboard-stats'],
+    queryFn: getDashboardStats,
+    retry: false,
   });
 
-  const { data: bookings, isLoading: bookingsLoading, error: bookingsError } = useQuery<{ data: BookingSummary[] }>({
+  // Obtener reservas recientes (para la lista)
+  const { data: bookings, isLoading: bookingsLoading } = useQuery<{ data: BookingSummary[] }>({
     queryKey: ['bookings'],
     queryFn: async () => {
-      console.log('[Dashboard] Fetching bookings...');
       try {
-        const response = await api.get('/api/bookings');
-        console.log('[Dashboard] Bookings response:', {
-          data: response.data,
-          count: response.data?.data?.length || 0,
-          statuses: response.data?.data?.map((b: BookingSummary) => b.status) || [],
-        });
+        const response = await api.get('/api/bookings?limit=5');
         return response.data;
       } catch (error) {
         console.error('[Dashboard] Error fetching bookings:', error);
-        // Retornar datos vacíos en lugar de lanzar error
         return { data: [] };
       }
     },
-    retry: false, // No reintentar automáticamente
+    retry: false,
   });
 
-  const stats = {
-    totalServices: services?.data?.length || 0,
-    activeServices: services?.data?.filter((service) => service.is_active).length || 0,
-    totalBookings: bookings?.data?.length || 0,
-    pendingBookings: bookings?.data?.filter((booking) => 
-      booking.status === 'pending' || booking.status === 'pending_payment'
-    ).length || 0,
-    confirmedBookings: bookings?.data?.filter((booking) => booking.status === 'confirmed').length || 0,
-  };
+  const stats = dashboardData?.data;
+  const financial = stats?.financial;
+  const advanced = stats?.advanced;
 
-  // Log de estadísticas calculadas
-  console.log('[Dashboard] Calculated stats:', stats);
-  console.log('[Dashboard] Raw data:', {
-    servicesCount: services?.data?.length,
-    bookingsCount: bookings?.data?.length,
-    bookingsStatuses: bookings?.data?.map(b => b.status) || [],
-  });
-
-  if (servicesLoading || bookingsLoading) {
+  if (statsLoading) {
     return <div style={{ padding: '2rem' }}>Cargando estadísticas...</div>;
   }
 
-  // Si hay errores, los registramos pero continuamos mostrando el dashboard con valores en 0
-  if (servicesError) {
-    console.warn('[Dashboard] Error loading services, showing 0:', servicesError);
-  }
-  if (bookingsError) {
-    console.warn('[Dashboard] Error loading bookings, showing 0:', bookingsError);
+  if (statsError) {
+    console.warn('[Dashboard] Error loading stats, showing defaults:', statsError);
   }
 
   return (
     <div style={{ padding: '2rem' }}>
       <h1 style={{ marginBottom: '2rem' }}>Dashboard</h1>
       
-      {/* Stats Cards */}
+      {/* Stats Cards - Básicas */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -109,11 +76,11 @@ export function Dashboard() {
           boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
         }}>
           <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#007bff' }}>
-            {stats.totalServices}
+            {stats?.services?.total || 0}
           </div>
           <div style={{ color: '#666', marginTop: '0.5rem' }}>Total Servicios</div>
           <div style={{ fontSize: '0.875rem', color: '#28a745', marginTop: '0.5rem' }}>
-            {stats.activeServices} activos
+            {stats?.services?.active || 0} activos
           </div>
         </div>
 
@@ -124,11 +91,11 @@ export function Dashboard() {
           boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
         }}>
           <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#28a745' }}>
-            {stats.totalBookings}
+            {stats?.bookings?.total || 0}
           </div>
           <div style={{ color: '#666', marginTop: '0.5rem' }}>Total Reservas</div>
           <div style={{ fontSize: '0.875rem', color: '#ffc107', marginTop: '0.5rem' }}>
-            {stats.pendingBookings} pendientes
+            {stats?.bookings?.pending + stats?.bookings?.pending_payment || 0} pendientes
           </div>
         </div>
 
@@ -139,11 +106,153 @@ export function Dashboard() {
           boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
         }}>
           <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#17a2b8' }}>
-            {stats.confirmedBookings}
+            {stats?.bookings?.confirmed || 0}
           </div>
           <div style={{ color: '#666', marginTop: '0.5rem' }}>Reservas Confirmadas</div>
         </div>
+
+        <div style={{
+          backgroundColor: 'white',
+          padding: '1.5rem',
+          borderRadius: '8px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+        }}>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#6c757d' }}>
+            {stats?.bookings?.today || 0}
+          </div>
+          <div style={{ color: '#666', marginTop: '0.5rem' }}>Reservas Hoy</div>
+        </div>
       </div>
+
+      {/* Métricas Financieras (Plan Intermedio/Premium) */}
+      {financial && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '1.5rem',
+          marginBottom: '2rem',
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '1.5rem',
+            borderRadius: '8px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+            borderLeft: '4px solid #28a745',
+          }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#28a745' }}>
+              {formatCurrency(financial.totalRevenue)}
+            </div>
+            <div style={{ color: '#666', marginTop: '0.5rem', fontSize: '0.875rem' }}>Ingresos Totales</div>
+          </div>
+
+          <div style={{
+            backgroundColor: 'white',
+            padding: '1.5rem',
+            borderRadius: '8px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+            borderLeft: '4px solid #007bff',
+          }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#007bff' }}>
+              {formatCurrency(financial.monthRevenue)}
+            </div>
+            <div style={{ color: '#666', marginTop: '0.5rem', fontSize: '0.875rem' }}>Ingresos del Mes</div>
+            {financial.monthVariation !== 0 && (
+              <div style={{
+                fontSize: '0.75rem',
+                color: financial.monthVariation > 0 ? '#28a745' : '#dc3545',
+                marginTop: '0.5rem',
+              }}>
+                {financial.monthVariation > 0 ? '↑' : '↓'} {Math.abs(financial.monthVariation).toFixed(1)}% vs mes anterior
+              </div>
+            )}
+          </div>
+
+          <div style={{
+            backgroundColor: 'white',
+            padding: '1.5rem',
+            borderRadius: '8px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+            borderLeft: '4px solid #ffc107',
+          }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ffc107' }}>
+              {formatCurrency(financial.todayRevenue)}
+            </div>
+            <div style={{ color: '#666', marginTop: '0.5rem', fontSize: '0.875rem' }}>Ingresos de Hoy</div>
+          </div>
+
+          <div style={{
+            backgroundColor: 'white',
+            padding: '1.5rem',
+            borderRadius: '8px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+            borderLeft: '4px solid #17a2b8',
+          }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#17a2b8' }}>
+              {formatCurrency(financial.avgTicket)}
+            </div>
+            <div style={{ color: '#666', marginTop: '0.5rem', fontSize: '0.875rem' }}>Ticket Promedio</div>
+          </div>
+        </div>
+      )}
+
+      {/* Métricas Avanzadas (Solo Plan Premium) */}
+      {advanced && (
+        <div style={{
+          backgroundColor: 'white',
+          padding: '2rem',
+          borderRadius: '8px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+          marginBottom: '2rem',
+        }}>
+          <h2 style={{ marginBottom: '1.5rem' }}>Análisis Avanzado</h2>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1.5rem',
+          }}>
+            {advanced.mostPopularService && (
+              <div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#007bff' }}>
+                  {advanced.mostPopularService.name}
+                </div>
+                <div style={{ color: '#666', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                  Servicio Más Popular
+                </div>
+                <div style={{ color: '#28a745', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+                  {advanced.mostPopularService.bookingsCount} reservas
+                </div>
+              </div>
+            )}
+            <div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#007bff' }}>
+                {advanced.uniqueCustomers}
+              </div>
+              <div style={{ color: '#666', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                Clientes Únicos
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#28a745' }}>
+                {advanced.recurringCustomers}
+              </div>
+              <div style={{ color: '#666', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                Clientes Recurrentes
+              </div>
+              <div style={{ color: '#17a2b8', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+                {advanced.retentionRate.toFixed(1)}% retención
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: advanced.noShowRate > 20 ? '#dc3545' : advanced.noShowRate > 10 ? '#ffc107' : '#28a745' }}>
+                {advanced.noShowRate.toFixed(1)}%
+              </div>
+              <div style={{ color: '#666', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                Tasa de No-Show
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div style={{

@@ -277,3 +277,56 @@ export const createShortlink = async (data: CreateShortlinkRequest): Promise<Cre
   return response.data;
 };
 
+// Dashboard Stats
+export interface DashboardStats {
+  bookings: {
+    total: number;
+    today: number;
+    thisMonth: number;
+    pending: number;
+    pending_payment: number;
+    confirmed: number;
+    cancelled: number;
+    completed: number;
+  };
+  services: {
+    total: number;
+    active: number;
+  };
+  financial?: {
+    totalRevenue: number;
+    monthRevenue: number;
+    todayRevenue: number;
+    lastMonthRevenue: number;
+    monthVariation: number;
+    pendingRevenue: number;
+    avgTicket: number;
+    paidBookingsCount: number;
+  };
+  advanced?: {
+    mostPopularService: {
+      id: string;
+      name: string;
+      bookingsCount: number;
+    } | null;
+    topServicesByRevenue: Array<{
+      id: string;
+      name: string;
+      revenue: number;
+    }>;
+    uniqueCustomers: number;
+    recurringCustomers: number;
+    retentionRate: number;
+    noShowRate: number;
+  };
+}
+
+export interface DashboardStatsResponse {
+  data: DashboardStats;
+}
+
+export const getDashboardStats = async (): Promise<DashboardStatsResponse> => {
+  const response = await api.get<DashboardStatsResponse>('/api/dashboard/stats');
+  return response.data;
+};
+
