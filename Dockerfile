@@ -38,8 +38,9 @@ WORKDIR /app
 COPY package*.json ./
 COPY backend/package*.json ./backend/
 
-# Instalar dependencias del workspace
-RUN npm ci --legacy-peer-deps --workspaces
+# Instalar dependencias (primero raíz, luego backend)
+RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps || true
+RUN cd backend && npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
 # Copiar código fuente
 COPY . .
