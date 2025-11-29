@@ -478,6 +478,13 @@ export interface ShortlinkAnalyticsDashboard {
     totalShortlinks: number;
     avgClicks: string;
   };
+  business?: {
+    activeClients: number;
+    trialClients: number;
+    migratedClients: number;
+    totalRevenue: number;
+    revenueByCurrency: Record<string, number>;
+  } | null;
   trends: {
     byDate: Array<{ date: string; count: number }>;
   };
