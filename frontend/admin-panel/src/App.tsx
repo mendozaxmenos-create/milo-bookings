@@ -8,6 +8,7 @@ import { Settings } from './pages/Settings';
 import { AdminBusinesses } from './pages/AdminBusinesses';
 import { AdminPlans } from './pages/AdminPlans';
 import { Shortlinks } from './pages/Shortlinks';
+import { ShortlinkAnalytics } from './pages/ShortlinkAnalytics';
 import { MercadoPagoInstructivo } from './pages/MercadoPagoInstructivo';
 import { useAuthStore } from './store/authStore';
 import { Layout } from './components/Layout';
@@ -36,6 +37,7 @@ function App() {
               <Route path="businesses" element={<AdminBusinesses />} />
               <Route path="plans" element={<AdminPlans />} />
               <Route path="shortlinks" element={<Shortlinks />} />
+              <Route path="shortlink-analytics" element={<ShortlinkAnalytics />} />
               <Route index element={<Navigate to="/admin/businesses" replace />} />
             </Route>
             {/* Ruta para ver panel de negocio como super admin */}

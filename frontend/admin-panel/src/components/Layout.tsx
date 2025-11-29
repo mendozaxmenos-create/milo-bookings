@@ -172,6 +172,35 @@ export function Layout() {
                     <span>Shortlinks</span>
                   </Link>
                 </li>
+                <li style={{ marginBottom: '0.5rem' }}>
+                  <Link
+                    to="/admin/shortlink-analytics"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '6px',
+                      textDecoration: 'none',
+                      color: isActive('/admin/shortlink-analytics') ? '#fff' : '#adb5bd',
+                      backgroundColor: isActive('/admin/shortlink-analytics') ? '#495057' : 'transparent',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive('/admin/shortlink-analytics')) {
+                        e.currentTarget.style.backgroundColor = '#3d4248';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive('/admin/shortlink-analytics')) {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                  >
+                    <span style={{ fontSize: '1.2rem' }}>📊</span>
+                    <span>Analytics</span>
+                  </Link>
+                </li>
               </>
             ) : (
               <>

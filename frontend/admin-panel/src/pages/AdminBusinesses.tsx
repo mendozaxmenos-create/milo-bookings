@@ -5,6 +5,7 @@ import {
   createBusiness,
   deleteBusiness,
   activateBusiness,
+  permanentlyDeleteBusiness,
   getSubscriptionPrice,
   updateSubscriptionPrice,
   migrateShortlinksToBusinesses,
@@ -56,6 +57,13 @@ export function AdminBusinesses() {
 
   const activateMutation = useMutation({
     mutationFn: activateBusiness,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
+    },
+  });
+
+  const permanentlyDeleteMutation = useMutation({
+    mutationFn: permanentlyDeleteBusiness,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
     },
@@ -153,6 +161,28 @@ export function AdminBusinesses() {
       if (confirm(`¿Reactivar el negocio "${business.name}"?`)) {
         activateMutation.mutate(business.id);
       }
+    }
+  };
+
+  const handlePermanentlyDelete = (business: Business) => {
+    const confirmMessage = `⚠️ ADVERTENCIA: ELIMINACIÓN PERMANENTE ⚠️\n\n` +
+      `Estás a punto de eliminar PERMANENTEMENTE el negocio "${business.name}".\n\n` +
+      `Esta acción:\n` +
+      `- Eliminará TODOS los datos del negocio (reservas, servicios, configuraciones, etc.)\n` +
+      `- NO se puede deshacer\n` +
+      `- Es IRREVERSIBLE\n\n` +
+      `Si solo quieres desactivar el negocio, usa el botón "Desactivar" en su lugar.\n\n` +
+      `¿Estás SEGURO de que quieres eliminar permanentemente este negocio?\n\n` +
+      `Escribe "ELIMINAR" para confirmar:`;
+
+    const userInput = prompt(confirmMessage);
+    
+    if (userInput === 'ELIMINAR') {
+      if (confirm(`Última confirmación: ¿Eliminar PERMANENTEMENTE "${business.name}"?\n\nEsta acción NO se puede deshacer.`)) {
+        permanentlyDeleteMutation.mutate(business.id);
+      }
+    } else if (userInput !== null) {
+      alert('Eliminación cancelada. No se escribió "ELIMINAR" correctamente.');
     }
   };
 

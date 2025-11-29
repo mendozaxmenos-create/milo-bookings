@@ -804,5 +804,43 @@ router.get('/check-migration', async (req, res) => {
   }
 });
 
+/**
+ * DELETE /api/admin/businesses/:id/delete
+ * Eliminar permanentemente un negocio (solo super admin)
+ * ⚠️ ADVERTENCIA: Esta acción es irreversible y eliminará todos los datos asociados
+ */
+router.delete('/businesses/:id/delete', async (req, res) => {
+  try {
+    console.log(`[Admin] DELETE /businesses/${req.params.id}/delete - Eliminando negocio permanentemente`);
+    
+    const business = await Business.findById(req.params.id);
+    if (!business) {
+      console.log(`[Admin] ❌ Negocio ${req.params.id} no encontrado`);
+      return res.status(404).json({ error: 'Business not found' });
+    }
+
+    console.log(`[Admin] ⚠️ Eliminando permanentemente el negocio:`, {
+      id: business.id,
+      name: business.name,
+    });
+
+    // Eliminar permanentemente
+    await Business.delete(req.params.id);
+
+    console.log(`[Admin] ✅ Negocio ${business.id} eliminado permanentemente`);
+
+    res.json({ 
+      message: 'Business deleted permanently',
+      deleted: {
+        id: business.id,
+        name: business.name,
+      },
+    });
+  } catch (error) {
+    console.error('[Admin] Error eliminando negocio:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
 export default router;
 

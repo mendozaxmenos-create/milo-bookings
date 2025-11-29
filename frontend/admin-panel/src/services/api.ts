@@ -196,6 +196,17 @@ export const activateBusiness = async (id: string): Promise<void> => {
   await api.post(`/api/admin/businesses/${id}/activate`);
 };
 
+export const permanentlyDeleteBusiness = async (id: string): Promise<{
+  message: string;
+  deleted: {
+    id: string;
+    name: string;
+  };
+}> => {
+  const response = await api.delete(`/api/admin/businesses/${id}/delete`);
+  return response.data;
+};
+
 export const getBusinessQR = async (id: string): Promise<{ data: { qr: string; status: string } }> => {
   const response = await api.get<{ data: { qr: string; status: string } }>(`/api/admin/businesses/${id}/qr`);
   return response.data;
@@ -454,6 +465,105 @@ export interface MigrationStatus {
 
 export const checkMigrationStatus = async (): Promise<MigrationStatus> => {
   const response = await api.get<MigrationStatus>('/api/admin/check-migration');
+  return response.data;
+};
+
+// Shortlink Analytics
+export interface ShortlinkAnalyticsDashboard {
+  summary: {
+    total: number;
+    previousTotal: number;
+    totalChange: string;
+    activeCount: number;
+    totalShortlinks: number;
+    avgClicks: string;
+  };
+  trends: {
+    byDate: Array<{ date: string; count: number }>;
+  };
+  topShortlinks: Array<{
+    slug: string;
+    name: string;
+    count: number;
+    percentage: string;
+  }>;
+  distribution: {
+    byHour: Array<{ hour: number; count: number }>;
+    byDayOfWeek: Array<{ day: number; count: number }>;
+  };
+  devices: {
+    devices: Array<{ type: string; count: number }>;
+    browsers: Array<{ name: string; count: number }>;
+  };
+  referers: Array<{ referer: string; count: number }>;
+  recentAccesses: Array<{
+    slug: string;
+    ipAddress: string | null;
+    userAgent: string | null;
+    referer: string | null;
+    accessedAt: string;
+  }>;
+  shortlinks: Array<{
+    slug: string;
+    name: string;
+    total: number;
+    firstAccess: string | null;
+    lastAccess: string | null;
+    today: number;
+    thisWeek: number;
+    thisMonth: number;
+  }>;
+}
+
+export interface ShortlinkAnalyticsDashboardResponse {
+  data: ShortlinkAnalyticsDashboard;
+}
+
+export interface ShortlinkDetails {
+  total: number;
+  byDate: Array<{ date: string; count: number }>;
+  byHour: Array<{ hour: number; count: number }>;
+  recent: Array<{
+    ipAddress: string | null;
+    userAgent: string | null;
+    referer: string | null;
+    accessedAt: string;
+  }>;
+}
+
+export interface ShortlinkDetailsResponse {
+  data: ShortlinkDetails;
+}
+
+export const getShortlinkAnalyticsDashboard = async (options?: {
+  startDate?: string;
+  endDate?: string;
+  compareStartDate?: string;
+  compareEndDate?: string;
+}): Promise<ShortlinkAnalyticsDashboardResponse> => {
+  const params = new URLSearchParams();
+  if (options?.startDate) params.append('startDate', options.startDate);
+  if (options?.endDate) params.append('endDate', options.endDate);
+  if (options?.compareStartDate) params.append('compareStartDate', options.compareStartDate);
+  if (options?.compareEndDate) params.append('compareEndDate', options.compareEndDate);
+  
+  const response = await api.get<ShortlinkAnalyticsDashboardResponse>(
+    `/api/shortlink-analytics/dashboard?${params.toString()}`
+  );
+  return response.data;
+};
+
+export const getShortlinkDetails = async (
+  slug: string,
+  options?: { startDate?: string; endDate?: string }
+): Promise<ShortlinkDetailsResponse> => {
+  const params = new URLSearchParams();
+  if (options?.startDate) params.append('startDate', options.startDate);
+  if (options?.endDate) params.append('endDate', options.endDate);
+  
+  const response = await api.get<ShortlinkDetailsResponse>(
+    `/api/shortlink-analytics/${slug}?${params.toString()}`
+  );
   return response.data;
 };
 
