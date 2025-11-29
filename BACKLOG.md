@@ -1,6 +1,6 @@
 # 📋 Backlog de Milo Bookings
 
-**Última actualización:** 28 de Noviembre 2025
+**Última actualización:** 29 de Noviembre 2025
 
 ---
 
@@ -43,6 +43,9 @@
 - [x] Panel de Super Admin mejorado (28/11/2025)
 - [x] Vista de negocios desde super admin (28/11/2025)
 - [x] Dashboard mejorado (muestra 0 en lugar de errores) (28/11/2025)
+- [x] Dashboard completo de analytics de shortlinks (29/11/2025)
+- [x] Sistema de planes y features dinámicos (29/11/2025)
+- [x] Botón para eliminar permanentemente comercios (29/11/2025)
 
 ### Correcciones
 - [x] Rutas API corregidas (prefijo `/api` en todas las rutas)
@@ -81,10 +84,21 @@
 ## 🔮 Pendiente (Prioridad Media)
 
 ### Analytics y Reportes
-- [ ] Dashboard de estadísticas de shortlinks
+- [x] Dashboard de estadísticas de shortlinks (29/11/2025)
 - [ ] Reportes de uso de shortlinks (cuántas veces se usó cada uno)
 - [ ] Analytics avanzados de reservas
 - [ ] Exportar reportes a Excel/PDF
+
+### Dashboard Financiero (Super Admin)
+- [ ] Dashboard financiero para super admin
+  - [ ] Ingresos totales por período
+  - [ ] Ingresos por negocio
+  - [ ] Ingresos por plan de suscripción
+  - [ ] Gráficos de tendencias de ingresos
+  - [ ] Métricas de conversión (trials → pagos)
+  - [ ] Negocios con pagos pendientes
+  - [ ] Proyecciones de ingresos
+  - [ ] Exportar reportes financieros
 
 ### CRM de Clientes
 - [ ] Base de datos de clientes recurrentes
@@ -149,19 +163,20 @@
 | Premium Features | 11 | 0 | 11 |
 | Deployment | 3 | 0 | 3 |
 | Mejoras UI/UX | 6 | 0 | 6 |
-| Analytics | 0 | 4 | 4 |
+| Analytics | 1 | 3 | 4 |
+| Dashboard Financiero | 0 | 1 | 1 |
 | CRM | 0 | 4 | 4 |
 | Notificaciones | 0 | 3 | 3 |
 | Multi-idioma | 0 | 3 | 3 |
 | Features Avanzadas | 0 | 5 | 5 |
 | Integraciones | 0 | 4 | 4 |
 | Mejoras Técnicas | 0 | 4 | 4 |
-| **TOTAL** | **33** | **27** | **60** |
+| **TOTAL** | **34** | **28** | **62** |
 
 ### Progreso General
-- **Completado:** 33/60 (55%)
-- **En Progreso:** 0/60 (0%)
-- **Pendiente:** 27/60 (45%)
+- **Completado:** 34/62 (55%)
+- **En Progreso:** 0/62 (0%)
+- **Pendiente:** 28/62 (45%)
 
 **Nota:** El MVP está 100% completo. Los pendientes son mejoras y features adicionales.
 
