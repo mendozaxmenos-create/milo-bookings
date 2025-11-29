@@ -1,4 +1,8 @@
+import React from 'react';
+import { useAuthStore } from '../store/authStore';
+
 export function MercadoPagoInstructivo() {
+  const { isAuthenticated } = useAuthStore();
   return (
     <div style={{ padding: '2rem', maxWidth: '900px', margin: '0 auto' }}>
       <div style={{ marginBottom: '2rem' }}>
@@ -150,7 +154,7 @@ export function MercadoPagoInstructivo() {
             No necesitás hacer nada más.
           </p>
           <a 
-            href="/settings" 
+            href={isAuthenticated ? "/settings" : "/login"}
             style={{
               display: 'inline-block',
               marginTop: '1rem',
