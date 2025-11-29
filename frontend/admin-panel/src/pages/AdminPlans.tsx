@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getPlans,
-  getPlan,
   createPlan,
   updatePlan,
   deletePlan,
@@ -216,8 +215,6 @@ export function AdminPlans() {
           <PlanCard
             key={plan.id}
             plan={plan}
-            allFeatures={allFeatures}
-            featuresByCategory={featuresByCategory}
             onEdit={handleEdit}
             onDelete={handleDelete}
           />
@@ -255,14 +252,10 @@ export function AdminPlans() {
 
 function PlanCard({
   plan,
-  allFeatures,
-  featuresByCategory,
   onEdit,
   onDelete,
 }: {
   plan: SubscriptionPlan;
-  allFeatures: Feature[];
-  featuresByCategory: Record<string, Feature[]>;
   onEdit: (plan: SubscriptionPlan) => void;
   onDelete: (plan: SubscriptionPlan) => void;
 }) {
