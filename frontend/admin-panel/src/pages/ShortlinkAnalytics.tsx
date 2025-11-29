@@ -4,6 +4,7 @@ import {
   getShortlinkAnalyticsDashboard,
   getShortlinkDetails,
 } from '../services/api';
+import { useAuthStore } from '../store/authStore';
 
 const DAYS_OF_WEEK = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
@@ -55,6 +56,9 @@ export function ShortlinkAnalytics() {
     retry: false,
   });
 
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.is_system_user && user?.role === 'super_admin';
+
   // Si hay error o no hay datos, usar datos vacíos (mostrar 0)
   const dashboard = data?.data || {
     summary: {
@@ -65,6 +69,13 @@ export function ShortlinkAnalytics() {
       totalShortlinks: 0,
       avgClicks: '0.0',
     },
+    business: isSuperAdmin ? {
+      activeClients: 0,
+      trialClients: 0,
+      migratedClients: 0,
+      totalRevenue: 0,
+      revenueByCurrency: {},
+    } : null,
     trends: { byDate: [] },
     topShortlinks: [],
     distribution: { byHour: [], byDayOfWeek: [] },
@@ -139,6 +150,49 @@ export function ShortlinkAnalytics() {
           color="#17a2b8"
         />
       </div>
+
+      {/* Métricas de Negocios (Solo Super Admin) */}
+      {isSuperAdmin && dashboard.business && (
+        <div style={{ marginBottom: '2rem' }}>
+          <h2 style={{ marginBottom: '1rem', fontSize: '1.5rem' }}>Métricas de Negocios</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+            <MetricCard
+              title="Clientes Activos"
+              value={dashboard.business.activeClients.toString()}
+              subtitle="Con suscripción activa"
+              color="#28a745"
+            />
+            <MetricCard
+              title="Clientes en Trial"
+              value={dashboard.business.trialClients.toString()}
+              subtitle="Período de prueba (7 días)"
+              color="#ffc107"
+            />
+            <MetricCard
+              title="Clientes Migrados"
+              value={dashboard.business.migratedClients.toString()}
+              subtitle="De trial a plan pago"
+              color="#17a2b8"
+            />
+            <MetricCard
+              title="Facturación Total"
+              value={new Intl.NumberFormat('es-AR', {
+                style: 'currency',
+                currency: 'ARS',
+                minimumFractionDigits: 0,
+              }).format(dashboard.business.totalRevenue)}
+              subtitle={Object.keys(dashboard.business.revenueByCurrency || {}).length > 0 
+                ? Object.entries(dashboard.business.revenueByCurrency)
+                    .map(([currency, amount]) => 
+                      `${currency}: ${new Intl.NumberFormat('es-AR', { style: 'currency', currency }).format(amount as number)}`
+                    ).join(', ')
+                : 'ARS'
+              }
+              color="#6f42c1"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Gráfico de Tendencias */}
       <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>

@@ -100,6 +100,20 @@
   - [ ] Proyecciones de ingresos
   - [ ] Exportar reportes financieros
 
+### Sistema de Trial Mode
+- [ ] Revisar y mejorar sistema de Trial Mode
+  - [ ] Definir duración del trial (actualmente 7 días)
+  - [ ] Implementar notificaciones automáticas antes del fin del trial
+  - [ ] Crear flujo de conversión automática (trial → plan pago)
+  - [ ] Agregar opción para extender trial manualmente (super admin)
+  - [ ] Implementar bloqueo automático de features al finalizar trial
+  - [ ] Dashboard de trials activos y próximos a vencer
+  - [ ] Email de bienvenida con información del trial
+  - [ ] Email de recordatorio 2 días antes del fin del trial
+  - [ ] Email de finalización del trial con opciones de upgrade
+  - [ ] Métricas de conversión de trial a plan pago
+  - [ ] Opción para que negocios soliciten extensión de trial
+
 ### CRM de Clientes
 - [ ] Base de datos de clientes recurrentes
 - [ ] Historial de reservas por cliente
@@ -206,9 +220,11 @@
 3. ✅ Instructivo de configuración de MercadoPago - **Completado (28/11/2025)**
 4. ✅ Panel de super admin mejorado - **Completado (28/11/2025)**
 5. ✅ Sistema de push automático a git - **Completado (28/11/2025)**
-6. ⏳ Configurar dominio de shortlinks
-7. ⏳ Probar flujo completo de shortlinks
-8. ⏳ Documentar para usuarios finales
+6. ✅ Métricas de negocios en analytics (29/11/2025) - **Completado**
+7. ⏳ Configurar dominio de shortlinks
+8. ⏳ Probar flujo completo de shortlinks
+9. ⏳ Documentar para usuarios finales
+10. ⏳ Revisar y mejorar sistema de Trial Mode
 
 ---
 
@@ -222,7 +238,9 @@
 - ✅ Panel de Super Admin mejorado (28/11/2025)
 - ✅ Dashboard mejorado (28/11/2025)
 - ✅ Sistema de push automático a git (28/11/2025)
+- ✅ Métricas de negocios en analytics (29/11/2025)
 - ⏳ Configuración de dominio personalizado
+- ⏳ Revisión y mejora del sistema de Trial Mode
 
 ### Q1 2026 (Ene-Mar)
 - Analytics de shortlinks
@@ -239,6 +257,6 @@
 ---
 
 **Mantenido por:** Mendoza x Menos Create  
-**Última revisión:** 28 de Noviembre 2025
+**Última revisión:** 29 de Noviembre 2025 (noche)
 
 

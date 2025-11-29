@@ -290,6 +290,62 @@ export class ShortlinkAnalyticsService {
       })
     );
 
+    // Métricas de clientes y facturación (solo para super admin o si businessId es null)
+    let businessMetrics = null;
+    if (!businessId) {
+      // Obtener todas las métricas de negocios
+      const now = new Date();
+      
+      // Clientes activos (tienen plan_id, no están en trial, y están activos)
+      const activeClientsQuery = db('businesses')
+        .where({ is_active: true })
+        .whereNotNull('plan_id')
+        .where({ is_trial: false });
+      const activeClientsResult = await activeClientsQuery.count('* as count').first();
+      const activeClients = parseInt(activeClientsResult?.count || 0, 10);
+      
+      // Clientes en trial (is_trial = true y trial_end_date > ahora)
+      const trialClientsQuery = db('businesses')
+        .where({ is_active: true, is_trial: true })
+        .whereNotNull('trial_end_date')
+        .where('trial_end_date', '>', now.toISOString());
+      const trialClientsResult = await trialClientsQuery.count('* as count').first();
+      const trialClients = parseInt(trialClientsResult?.count || 0, 10);
+      
+      // Facturación total (suma de precios de planes de clientes activos)
+      const activeBusinessesWithPlans = await db('businesses')
+        .join('subscription_plans', 'businesses.plan_id', 'subscription_plans.id')
+        .where({ 'businesses.is_active': true, 'businesses.is_trial': false })
+        .whereNotNull('businesses.plan_id')
+        .select('subscription_plans.price', 'subscription_plans.currency');
+      
+      let totalRevenue = 0;
+      const revenueByCurrency = {};
+      activeBusinessesWithPlans.forEach(business => {
+        const price = parseFloat(business.price || 0);
+        const currency = business.currency || 'ARS';
+        totalRevenue += price;
+        revenueByCurrency[currency] = (revenueByCurrency[currency] || 0) + price;
+      });
+      
+      // Clientes que migraron de trial a plan pago (trial_end_date < ahora y tienen plan_id)
+      const migratedClientsQuery = db('businesses')
+        .where({ is_active: true, is_trial: false })
+        .whereNotNull('plan_id')
+        .whereNotNull('trial_end_date')
+        .where('trial_end_date', '<', now.toISOString());
+      const migratedClientsResult = await migratedClientsQuery.count('* as count').first();
+      const migratedClients = parseInt(migratedClientsResult?.count || 0, 10);
+      
+      businessMetrics = {
+        activeClients,
+        trialClients,
+        migratedClients,
+        totalRevenue,
+        revenueByCurrency,
+      };
+    }
+
     return {
       summary: {
         total,
@@ -299,6 +355,7 @@ export class ShortlinkAnalyticsService {
         totalShortlinks,
         avgClicks: avgClicks.toFixed(1),
       },
+      business: businessMetrics,
       trends: {
         byDate: byDate.map(row => ({
           date: row.date,
