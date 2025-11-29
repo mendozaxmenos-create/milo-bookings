@@ -3,8 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import {
   getShortlinkAnalyticsDashboard,
   getShortlinkDetails,
-  type ShortlinkAnalyticsDashboard,
-  type ShortlinkDetails,
 } from '../services/api';
 
 const DAYS_OF_WEEK = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -688,7 +686,7 @@ function RecentAccessesTable({
   accesses,
 }: {
   accesses: Array<{
-    slug: string;
+    slug?: string;
     ipAddress: string | null;
     userAgent: string | null;
     referer: string | null;
@@ -738,7 +736,7 @@ function RecentAccessesTable({
                     minute: '2-digit',
                   })}
                 </td>
-                <td style={{ padding: '0.75rem' }}>/{access.slug}</td>
+                <td style={{ padding: '0.75rem' }}>{access.slug ? `/${access.slug}` : 'N/A'}</td>
                 <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>
                   {getDeviceFromUA(access.userAgent)}
                 </td>

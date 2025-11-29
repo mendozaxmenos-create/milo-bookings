@@ -67,11 +67,6 @@ export function AdminBusinesses() {
   });
 
 
-  const { data: priceData } = useQuery({
-    queryKey: ['subscription-price'],
-    queryFn: getSubscriptionPrice,
-  });
-
   const { data: plansData } = useQuery({
     queryKey: ['plans'],
     queryFn: getPlans,
@@ -84,14 +79,6 @@ export function AdminBusinesses() {
       queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
       setShowPlanModal(false);
       setSelectedBusiness(null);
-    },
-  });
-
-  const updatePriceMutation = useMutation({
-    mutationFn: updateSubscriptionPrice,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subscription-price'] });
-      setShowPriceModal(false);
     },
   });
 
@@ -924,111 +911,4 @@ function QRModal({
   );
 }
 
-function SubscriptionPriceModal({
-  currentPrice,
-  onClose,
-  onSave,
-  isLoading,
-}: {
-  currentPrice: string;
-  onClose: () => void;
-  onSave: (price: string) => void;
-  isLoading: boolean;
-}) {
-  const [price, setPrice] = useState(currentPrice);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (price && !isNaN(parseFloat(price)) && parseFloat(price) >= 0) {
-      onSave(price);
-    }
-  };
-
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 1000,
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: 'white',
-          padding: '2rem',
-          borderRadius: '8px',
-          width: '90%',
-          maxWidth: '500px',
-        }}
-      >
-        <h2 style={{ marginTop: 0 }}>💰 Configurar Precio de Suscripción</h2>
-        <p style={{ color: '#6c757d', marginBottom: '1.5rem' }}>
-          Este precio se utilizará en los mensajes de notificación cuando expire el período de prueba de los negocios.
-        </p>
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-              Precio Mensual (ARS)
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              required
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '1.1rem',
-              }}
-            />
-            <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6c757d' }}>
-              Precio actual: ${parseFloat(currentPrice).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                padding: '0.5rem 1rem',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                backgroundColor: 'white',
-              }}
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={isLoading || !price || isNaN(parseFloat(price)) || parseFloat(price) < 0}
-              style={{
-                padding: '0.5rem 1rem',
-                backgroundColor: '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: isLoading ? 'not-allowed' : 'pointer',
-                opacity: isLoading ? 0.6 : 1,
-              }}
-            >
-              {isLoading ? 'Guardando...' : 'Guardar'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
 
