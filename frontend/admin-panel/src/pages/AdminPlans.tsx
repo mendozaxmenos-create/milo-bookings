@@ -21,10 +21,19 @@ export function AdminPlans() {
     queryFn: getPlans,
   });
 
-  const { data: featuresData } = useQuery({
+  const { data: featuresData, error: featuresError, isLoading: featuresLoading } = useQuery({
     queryKey: ['available-features'],
     queryFn: getAvailableFeatures,
+    retry: 2,
   });
+
+  // Debug: Log para ver qué está pasando
+  if (featuresError) {
+    console.error('[AdminPlans] Error loading features:', featuresError);
+  }
+  if (featuresData) {
+    console.log('[AdminPlans] Features data:', featuresData);
+  }
 
   const plans = plansData?.data || [];
   const allFeatures = featuresData?.data || [];
@@ -73,8 +82,31 @@ export function AdminPlans() {
     deleteMutation.mutate(plan.id);
   };
 
-  if (isLoading) {
-    return <div style={{ padding: '2rem' }}>Cargando planes...</div>;
+  if (isLoading || featuresLoading) {
+    return <div style={{ padding: '2rem' }}>Cargando planes y features...</div>;
+  }
+
+  // Mostrar error si hay problema cargando features
+  if (featuresError) {
+    return (
+      <div style={{ padding: '2rem' }}>
+        <div style={{
+          backgroundColor: '#f8d7da',
+          color: '#721c24',
+          padding: '1rem',
+          borderRadius: '4px',
+          marginBottom: '1rem',
+        }}>
+          <strong>Error al cargar features:</strong>
+          <pre style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
+            {featuresError instanceof Error ? featuresError.message : JSON.stringify(featuresError)}
+          </pre>
+          <p style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
+            Verifica que la migración de base de datos se haya ejecutado correctamente.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // Calcular estadísticas de features
