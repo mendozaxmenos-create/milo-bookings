@@ -6,8 +6,6 @@ import {
   deleteBusiness,
   activateBusiness,
   permanentlyDeleteBusiness,
-  getSubscriptionPrice,
-  updateSubscriptionPrice,
   migrateShortlinksToBusinesses,
   getShortlinks,
   getPlans,
@@ -21,7 +19,6 @@ import QRCode from 'qrcode.react';
 export function AdminBusinesses() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
-  const [showPriceModal, setShowPriceModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
@@ -239,19 +236,6 @@ export function AdminBusinesses() {
             {migrateMutation.isPending ? '⏳ Migrando...' : '🔄 Migrar Shortlinks a Negocios'}
           </button>
           <button
-            onClick={() => setShowPriceModal(true)}
-            style={{
-              padding: '0.75rem 1.5rem',
-              backgroundColor: '#28a745',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            💰 Configurar Precio Suscripción
-          </button>
-          <button
             onClick={() => setShowCreateModal(true)}
             style={{
               padding: '0.75rem 1.5rem',
@@ -442,15 +426,6 @@ export function AdminBusinesses() {
             setShortlinkUrl(null);
             setShortlinkName(null);
           }}
-        />
-      )}
-
-      {showPriceModal && (
-        <SubscriptionPriceModal
-          currentPrice={priceData?.data.price || '5000.00'}
-          onClose={() => setShowPriceModal(false)}
-          onSave={(price) => updatePriceMutation.mutate(price)}
-          isLoading={updatePriceMutation.isPending}
         />
       )}
 
