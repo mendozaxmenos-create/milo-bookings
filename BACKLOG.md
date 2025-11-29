@@ -258,6 +258,8 @@
 8. ⏳ Probar flujo completo de shortlinks
 9. ⏳ Documentar para usuarios finales
 10. ⏳ Revisar y mejorar sistema de Trial Mode
+11. ⏳ Diseñar contenido para redes sociales (Twitter/X)
+12. ⏳ Planificar guía de prestadores / directorio de negocios
 
 ---
 
@@ -280,6 +282,8 @@
 - CRM de clientes
 - Notificaciones push
 - Multi-idioma (español/inglés)
+- Guía de prestadores / Directorio de negocios
+- Estrategia de contenido para redes sociales
 
 ### Q2 2026 (Abr-Jun)
 - Múltiples ubicaciones
